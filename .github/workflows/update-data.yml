@@ -2,7 +2,7 @@ name: Weekly LatAm Data Updater
 
 on:
   schedule:
-    # ירוץ כל יום שני בשעה 06:00 UTC (שזה 08:00 בבוקר שעון ישראל)
+    # ירוץ כל יום שני בשעה 06:00 UTC (08:00 בבוקר שעון ישראל)
     - cron: '0 6 * * 1'
   workflow_dispatch: # מאפשר הפעלה ידנית
 
@@ -21,8 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm install @supabase/supabase-js
 
-      - name: Run Scraper Script
+      - name: Run AI Research Agent
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: node scraper.js
