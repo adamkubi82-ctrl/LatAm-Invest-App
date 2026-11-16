@@ -2,9 +2,9 @@ name: Weekly LatAm Data Updater
 
 on:
   schedule:
-    # רץ אוטומטית פעם בשבוע (ביום ראשון ב-02:00 בלילה)
-- cron: '0 6 * * 1'
-  workflow_dispatch: # כפתור ידני שמאפשר לנו להפעיל את זה מתי שבא לנו
+    # ירוץ כל יום שני בשעה 06:00 UTC (שזה 08:00 בבוקר שעון ישראל)
+    - cron: '0 6 * * 1'
+  workflow_dispatch: # מאפשר הפעלה ידנית
 
 jobs:
   update-database:
