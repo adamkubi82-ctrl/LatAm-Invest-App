@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LatAm Invest Terminal | מחקר השקעות אמריקה הלטינית</title>
+  <title>LatAm Invest Terminal</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -46,14 +46,19 @@
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
       </svg>
     );
-    const IconSearch = () => (
-      <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    const IconBuilding = () => (
+      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     );
-    const IconActivity = () => (
+    const IconTrendUp = () => (
       <svg className="w-4 h-4 text-[#B2FF05]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    );
+    const IconNews = () => (
+      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
       </svg>
     );
     const IconExternal = () => (
@@ -69,7 +74,6 @@
 
     const COUNTRIES = [
       { id: 'הכל', label: 'כל המדינות' },
-      { id: 'ברזיל', label: 'ברזיל' },
       { id: 'מקסיקו', label: 'מקסיקו' },
       { id: 'קולומביה', label: 'קולומביה' },
       { id: "צ'ילה", label: "צ'ילה" },
@@ -77,12 +81,14 @@
       { id: 'פרו', label: 'פרו' },
       { id: 'אורוגוואי', label: 'אורוגוואי' },
       { id: 'אקוודור', label: 'אקוודור' },
-      { id: 'קוסטה ריקה', label: 'קוסטה ריקה' }
+      { id: 'קוסטה ריקה', label: 'קוסטה ריקה' },
+      { id: 'אל סלבדור', label: 'אל סלבדור' }
     ];
 
     const STAGES = [
       { id: 'הכל', label: 'הכל', color: 'bg-gray-400' },
       { id: 'לקראת הנפקה', label: 'לקראת הנפקה', color: 'bg-purple-500' },
+      { id: 'אחרי הנפקה', label: 'אחרי הנפקה', color: 'bg-blue-500' },
       { id: 'טרנדיות', label: 'טרנדיות', color: 'bg-lime-400' },
       { id: 'מומנטום', label: 'מומנטום', color: 'bg-orange-500' },
       { id: 'חזקות', label: 'חזקות', color: 'bg-teal-500' }
@@ -114,6 +120,7 @@
     const getStageBadge = (stage) => {
       switch (stage) {
         case 'לקראת הנפקה': return 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+        case 'אחרי הנפקה': return 'bg-blue-500/15 text-blue-300 border-blue-500/30';
         case 'טרנדיות': return 'bg-lime-400/15 text-[#B2FF05] border-lime-400/30';
         case 'מומנטום': return 'bg-orange-500/15 text-orange-300 border-orange-500/30';
         case 'חזקות': return 'bg-teal-500/15 text-teal-300 border-teal-500/30';
@@ -129,15 +136,22 @@
     const parseInterestScore = (level) => {
       if (!level) return 65;
       if (!isNaN(Number(level))) return Number(level);
-      if (level.includes('גבוה מאוד')) return 92;
+      if (level.includes('גבוה מאוד')) return 91;
       if (level.includes('גבוה')) return 82;
-      if (level.includes('עלייה')) return 78;
-      if (level.includes('בינוני')) return 65;
+      if (level.includes('עלייה')) return 76;
+      if (level.includes('בינוני')) return 64;
       return 55;
     };
 
+    // קביעת שלב חכמה שמונעת מחברות בורסאיות להופיע כ"לקראת הנפקה"
     const deriveStage = (item) => {
+      const status = (item.status || '').toLowerCase();
       const level = item.interest_level || '';
+      
+      if (status.includes('אחרי הנפקה')) return 'אחרי הנפקה';
+      if (status.includes('nyse') || status.includes('nasdaq') || status.includes('בורסאית')) {
+        return 'חזקות';
+      }
       if (level.includes('גבוה מאוד')) return 'לקראת הנפקה';
       if (level.includes('גבוה')) return 'טרנדיות';
       if (level.includes('עלייה')) return 'מומנטום';
@@ -150,7 +164,6 @@
       const [lastUpdated, setLastUpdated] = useState(null);
       const [selectedCountry, setSelectedCountry] = useState('הכל');
       const [selectedStage, setSelectedStage] = useState('הכל');
-      const [searchQuery, setSearchQuery] = useState('');
       const [selectedCompany, setSelectedCompany] = useState(null);
       const [copied, setCopied] = useState(false);
 
@@ -182,22 +195,24 @@
               }));
             }
 
-            const enrichedDB = fetched.map(item => {
-              const score = parseInterestScore(item.interest_level);
-              const computedStage = deriveStage(item);
-              return {
-                ...item,
-                sector: item.industry || 'פינטק וטכנולוגיה',
-                stage: computedStage,
-                interest_num: score,
-                driver_type: item.motivation || 'כסף ותשואה (קר)',
-                driver_desc: item.motivation?.includes('רגשי')
-                  ? 'שיח ער ברשתות החברתיות ואימוץ מהיר בקרב קהל צעיר המונע מחדשנות ומותג.' 
-                  : item.motivation?.includes('חדשנות')
-                  ? 'יתרון טכנולוגי מובהק ופתרון דיגיטלי מתקדם בשוק המקומי.'
-                  : 'העדפת משתמשים המבוססת על חיסכון בעמלות, יציבות פיננסית ותשואה כלכלית.'
-              };
-            }).sort((a, b) => b.interest_num - a.interest_num);
+            // סינון ברזיל ותאגידים גלובליים אם נשארו מהעבר
+            const validCountries = COUNTRIES.map(c => c.id);
+            const enrichedDB = fetched
+              .filter(item => validCountries.includes(item.country) && !item.name?.toLowerCase().includes('amazon'))
+              .map(item => {
+                const score = parseInterestScore(item.interest_level);
+                const computedStage = deriveStage(item);
+                return {
+                  ...item,
+                  sector: item.industry || 'פינטק וטכנולוגיה',
+                  stage: computedStage,
+                  interest_num: score,
+                  driver_type: item.motivation || 'כסף ותשואה (קר)',
+                  description: item.description || `${item.name} היא חברת ${item.industry || 'טכנולוגיה'} מובילה הפועלת ב${item.country} ומספקת פתרונות דיגיטליים מתקדמים לשוק המקומי.`,
+                  investment_thesis: item.investment_thesis || `החברה נהנית מאימוץ דיגיטלי מואץ ב${item.country} ומבססת את מעמדה כאחת השחקניות הבולטות בסקטור.`
+                };
+              })
+              .sort((a, b) => b.interest_num - a.interest_num);
 
             setData(enrichedDB);
           } catch (err) {
@@ -213,14 +228,9 @@
         return data.filter(item => {
           const matchCountry = selectedCountry === 'הכל' || item.country === selectedCountry;
           const matchStage = selectedStage === 'הכל' || item.stage === selectedStage;
-          const matchSearch = !searchQuery || 
-            item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.sector?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.country?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.catalyst?.toLowerCase().includes(searchQuery.toLowerCase());
-          return matchCountry && matchStage && matchSearch;
+          return matchCountry && matchStage;
         });
-      }, [data, selectedCountry, selectedStage, searchQuery]);
+      }, [data, selectedCountry, selectedStage]);
 
       const handleCopyShareLink = () => {
         const baseUrl = window.location.origin + window.location.pathname;
@@ -233,7 +243,8 @@
       const stageTooltips = {
         'טרנדיות': 'חברות שמייצרות המון רעש וחיפושים ברשת כרגע (Hype), לרוב בעקבות קמפיין חזק או כניסה לסקטור חם.',
         'מומנטום': 'חברות שנמצאות במסלול צמיחה עקבי ומוכח בהכנסות ובגיוסי הון (תנופה עסקית אמיתית).',
-        'לקראת הנפקה': 'חברות בשלות הנמצאות בשלבי גיוס מתקדמים (Pre-IPO) ונערכות להנפקה בבורסה.',
+        'לקראת הנפקה': 'חברות פרטיות בשלות הנמצאות בשלבי גיוס מתקדמים (Pre-IPO) ונערכות להנפקה בבורסה.',
+        'אחרי הנפקה': 'חברות טכנולוגיה ופינטק שהונפקו בבורסה לאחרונה ונמצאות בשלב הצמיחה הציבורי שלהן.',
         'חזקות': 'חברות עוגן מבוססות ורווחיות עם נתח שוק משמעותי ויציבות פיננסית.'
       };
 
@@ -247,9 +258,6 @@
                   <h1 className="text-xl font-black tracking-tight text-white">
                     LATAM <span className="text-[#B2FF05]">INVEST</span> TERMINAL
                   </h1>
-                  <span className="text-[11px] bg-[#1A232E] text-gray-400 border border-[#2D3A4B] px-2.5 py-0.5 rounded-full">
-                    דוח מחקר מאומת • תצוגה בלבד
-                  </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   סקירת שוק ומודיעין עסקי לשווקים מתעוררים באמריקה הלטינית {lastUpdated ? `• מהדורת ${lastUpdated}` : ''}
@@ -298,44 +306,29 @@
               })}
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#11171F] p-4 rounded-2xl border border-[#1E2732]">
-              <div className="flex flex-wrap items-center gap-2">
-                {STAGES.map(stage => {
-                  const btn = (
-                    <button
-                      key={stage.id}
-                      onClick={() => setSelectedStage(stage.id)}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 border ${
-                        selectedStage === stage.id
-                          ? 'bg-[#1A232E] text-white border-[#B2FF05]/50 shadow-[0_0_10px_rgba(178,255,5,0.1)]'
-                          : 'bg-[#131A22] text-gray-400 border-[#232D36] hover:border-gray-600'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${stage.color}`}></span>
-                      {stage.label}
-                    </button>
-                  );
+            <div className="flex flex-wrap items-center gap-2 bg-[#11171F] p-4 rounded-2xl border border-[#1E2732]">
+              {STAGES.map(stage => {
+                const btn = (
+                  <button
+                    key={stage.id}
+                    onClick={() => setSelectedStage(stage.id)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 border ${
+                      selectedStage === stage.id
+                        ? 'bg-[#1A232E] text-white border-[#B2FF05]/50 shadow-[0_0_10px_rgba(178,255,5,0.1)]'
+                        : 'bg-[#131A22] text-gray-400 border-[#232D36] hover:border-gray-600'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${stage.color}`}></span>
+                    {stage.label}
+                  </button>
+                );
 
-                  return stageTooltips[stage.id] ? (
-                    <Tooltip key={stage.id} text={stageTooltips[stage.id]} position="bottom">
-                      {btn}
-                    </Tooltip>
-                  ) : btn;
-                })}
-              </div>
-
-              <div className="relative w-full md:w-72">
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                  <IconSearch />
-                </div>
-                <input
-                  type="text"
-                  placeholder="חיפוש חברה, סקטור או מדינה..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0B0F14] border border-[#232D36] focus:border-[#B2FF05] rounded-xl py-2 pr-10 pl-4 text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
-                />
-              </div>
+                return stageTooltips[stage.id] ? (
+                  <Tooltip key={stage.id} text={stageTooltips[stage.id]} position="bottom">
+                    {btn}
+                  </Tooltip>
+                ) : btn;
+              })}
             </div>
 
             <div className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-visible shadow-xl">
@@ -347,13 +340,17 @@
                       <th className="py-4 px-4 font-medium">מדינה</th>
                       <th className="py-4 px-4 font-medium">סקטור</th>
                       <th className="py-4 px-4 font-medium text-center">
-                        <Tooltip text="סיווג החברה: טרנדיות (רעש וחיפושים ברשת) מול מומנטום (צמיחה עסקית וגיוסים מוכחים), לקראת הנפקה או חברות עוגן חזקות." position="bottom">
+                        <Tooltip text="סיווג החברה: טרנדיות (רעש ברשת) מול מומנטום (צמיחה מוכחת), לקראת הנפקה, אחרי הנפקה או חברות עוגן חזקות." position="bottom">
                           שלב
                         </Tooltip>
                       </th>
-                      <th className="py-4 px-4 font-medium">עניין ↓</th>
+                      <th className="py-4 px-4 font-medium">
+                        <Tooltip text="מדד עניין יחסי (0-100) המשקלל נפח חיפושים ב-Google Trends וסיקור תקשורתי עדכני במדינת היעד." position="bottom">
+                          עניין ↓
+                        </Tooltip>
+                      </th>
                       <th className="py-4 px-4 font-medium">המניע המרכזי</th>
-                      <th className="py-4 px-4 font-medium">למה בכותרות עכשיו</th>
+                      <th className="py-4 px-4 font-medium">מה מדווחים עליה</th>
                       <th className="py-4 px-4 font-medium">הון שגויס</th>
                       <th className="py-4 px-5 font-medium">שווי מוערך</th>
                     </tr>
@@ -427,83 +424,113 @@
             </div>
           </main>
 
+          {/* כרטיס חברה מפורט בעיצוב המודרני (ללא מספרים מומצאים) */}
           {selectedCompany && (
             <div 
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
               onClick={() => setSelectedCompany(null)}
             >
               <div 
-                className="bg-[#0F151D] border border-[#232D36] rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl relative"
+                className="bg-[#0B0F14] border border-[#B2FF05]/40 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-[0_0_40px_rgba(0,0,0,0.9)] relative my-8"
                 onClick={e => e.stopPropagation()}
               >
+                {/* כותרת כרטיס החברה */}
                 <div className="flex items-start justify-between border-b border-[#1E2732] pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#1A232E] border border-[#B2FF05]/40 flex items-center justify-center font-black text-base text-[#B2FF05]">
-                      {getInitials(selectedCompany.name)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-black text-white">{selectedCompany.name}</h2>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStageBadge(selectedCompany.stage)}`}>
-                          {selectedCompany.stage}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {selectedCompany.country} • {selectedCompany.sector} • {selectedCompany.status || 'פרטית'}
-                      </p>
-                    </div>
-                  </div>
                   <button 
                     onClick={() => setSelectedCompany(null)}
                     className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-[#161E27] transition-colors"
                   >
                     <IconClose />
                   </button>
+
+                  <div className="text-left">
+                    <div className="text-xs text-gray-400 mb-1">
+                      {selectedCompany.country} • {selectedCompany.sector}
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(selectedCompany.stage)}`}>
+                        {selectedCompany.stage}
+                      </span>
+                      <span className="bg-[#B2FF05] text-[#0B0F14] px-3 py-0.5 rounded-lg text-xl font-black tracking-tight">
+                        {selectedCompany.name}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-300 mt-1.5 font-mono">
+                      {selectedCompany.status || 'פרטית'} • שווי מוערך: <span className="font-bold text-white">{selectedCompany.valuation || 'לא פורסם'}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">שווי מוערך מאומת</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.valuation || 'לא פורסם'}</div>
+                {/* מה היא עושה */}
+                <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
+                    <IconBuilding />
+                    <span>מה היא עושה</span>
                   </div>
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">הון שגויס מאומת</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.raised || 'לא פורסם'}</div>
+                  <p className="text-sm text-gray-200 leading-relaxed">
+                    {selectedCompany.description}
+                  </p>
+                </div>
+
+                {/* למה שווה להשקיע (מסגרת ירוקה בולטת) */}
+                <div className="bg-[#11171F] border border-[#B2FF05]/50 rounded-xl p-4 space-y-1.5 shadow-[0_0_20px_rgba(178,255,5,0.05)]">
+                  <div className="flex items-center gap-2 text-xs text-[#B2FF05] font-bold">
+                    <IconTrendUp />
+                    <span>למה שווה להשקיע</span>
                   </div>
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">רמת עניין</div>
-                    <div className="text-base font-bold text-emerald-400 mt-1">{selectedCompany.interest_level || selectedCompany.interest_num}</div>
+                  <p className="text-sm text-white leading-relaxed">
+                    {selectedCompany.investment_thesis}
+                  </p>
+                </div>
+
+                {/* נתונים פיננסיים מאומתים (הון שגויס ושווי מוערך) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
+                    <div className="text-xs text-gray-400">הון שגויס</div>
+                    <div className="text-lg font-black text-white mt-1 font-mono">{selectedCompany.raised || 'לא פורסם'}</div>
+                  </div>
+                  <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
+                    <div className="text-xs text-gray-400">שווי מוערך</div>
+                    <div className="text-lg font-black text-[#B2FF05] mt-1 font-mono">{selectedCompany.valuation || 'לא פורסם'}</div>
                   </div>
                 </div>
 
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-4 space-y-2">
+                {/* מדד עניין */}
+                <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4">
+                  <div className="text-xs text-gray-400 mb-2">מדדים</div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-gray-300 font-medium">עניין וחיפושים</span>
+                    <span className="text-sm font-bold text-white">{selectedCompany.interest_num}</span>
+                    <div className="flex-1 h-2 bg-[#1E2732] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#B2FF05] rounded-full" 
+                        style={{ width: `${Math.min(100, selectedCompany.interest_num)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* מה מדווחים עליה */}
+                <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-300">קטליזטור וסיקור חדשותי אחרון</span>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
+                      <IconNews />
+                      <span>מה מדווחים עליה</span>
+                    </div>
                     {selectedCompany.source_url && (
                       <a 
                         href={selectedCompany.source_url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-medium"
+                        className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-bold"
                       >
                         <span>לכתבת המקור</span>
                         <IconExternal />
                       </a>
                     )}
                   </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">
+                  <p className="text-sm text-gray-200 leading-relaxed">
                     {selectedCompany.catalyst || 'פעילות צומחת בשוק המקומי.'}
-                  </p>
-                </div>
-
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-4">
-                  <h3 className="text-xs font-bold text-gray-300 flex items-center gap-2 mb-1.5">
-                    <IconActivity />
-                    המניע המרכזי (רגש מול כסף)
-                  </h3>
-                  <div className="text-xs text-[#B2FF05] font-medium mb-1">{selectedCompany.driver_type}</div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    {selectedCompany.driver_desc}
                   </p>
                 </div>
               </div>
