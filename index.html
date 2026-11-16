@@ -9,7 +9,6 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
   <style>
@@ -32,25 +31,19 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
-    // --- Supabase & GitHub Configuration ---
     const supabaseUrl = 'https://oikogvyjchqjwxfembcd.supabase.co';
     const supabaseKey = 'sb_publishable_wfndEaEpiSiJ0ogGOmqF8g_XGvOx1h4';
-    const githubRepoUrl = 'https://github.com/adamkubi82-ctrl/LatAm-Invest-App/actions/workflows/update-data.yml';
 
-    // --- Icons ---
+    const isSharedView = new URLSearchParams(window.location.search).get('view') === 'share';
+
     const IconInfo = () => (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     );
-    const IconDownload = () => (
+    const IconShare = () => (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-    );
-    const IconRefresh = () => (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
       </svg>
     );
     const IconSearch = () => (
@@ -61,6 +54,11 @@
     const IconActivity = () => (
       <svg className="w-4 h-4 text-[#B2FF05]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    );
+    const IconExternal = () => (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
       </svg>
     );
     const IconClose = () => (
@@ -79,8 +77,7 @@
       { id: 'פרו', label: 'פרו' },
       { id: 'אורוגוואי', label: 'אורוגוואי' },
       { id: 'אקוודור', label: 'אקוודור' },
-      { id: 'קוסטה ריקה', label: 'קוסטה ריקה' },
-      { id: 'אל סלבדור', label: 'אל סלבדור' }
+      { id: 'קוסטה ריקה', label: 'קוסטה ריקה' }
     ];
 
     const STAGES = [
@@ -140,7 +137,6 @@
     };
 
     const deriveStage = (item) => {
-      if (item.stage) return item.stage;
       const level = item.interest_level || '';
       if (level.includes('גבוה מאוד')) return 'לקראת הנפקה';
       if (level.includes('גבוה')) return 'טרנדיות';
@@ -156,6 +152,7 @@
       const [selectedStage, setSelectedStage] = useState('הכל');
       const [searchQuery, setSearchQuery] = useState('');
       const [selectedCompany, setSelectedCompany] = useState(null);
+      const [copied, setCopied] = useState(false);
 
       useEffect(() => {
         async function fetchData() {
@@ -178,12 +175,10 @@
                 return new Date(dateVal) > new Date(acc) ? dateVal : acc;
               }, fetched[0].updated_at || fetched[0].created_at || new Date().toISOString());
               
-              setLastUpdated(new Date(newest).toLocaleString('he-IL', {
+              setLastUpdated(new Date(newest).toLocaleDateString('he-IL', {
                 day: '2-digit',
                 month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                year: 'numeric'
               }));
             }
 
@@ -192,14 +187,15 @@
               const computedStage = deriveStage(item);
               return {
                 ...item,
-                sector: item.industry || item.sector || 'פינטק וטכנולוגיה',
+                sector: item.industry || 'פינטק וטכנולוגיה',
                 stage: computedStage,
                 interest_num: score,
-                driver_type: item.motivation || (score > 80 ? 'חיבור רגשי (מותג/קהילה)' : 'כסף ותשואה (קר)'),
+                driver_type: item.motivation || 'כסף ותשואה (קר)',
                 driver_desc: item.motivation?.includes('רגשי')
                   ? 'שיח ער ברשתות החברתיות ואימוץ מהיר בקרב קהל צעיר המונע מחדשנות ומותג.' 
-                  : 'העדפת משתמשים המבוססת על חיסכון בעמלות, יציבות פיננסית ותשואה כלכלית.',
-                ad_angle: item.ad_angle || 'מיקוד בהנגשת שירותים דיגיטליים מהירים וחיסכון בעלויות.'
+                  : item.motivation?.includes('חדשנות')
+                  ? 'יתרון טכנולוגי מובהק ופתרון דיגיטלי מתקדם בשוק המקומי.'
+                  : 'העדפת משתמשים המבוססת על חיסכון בעמלות, יציבות פיננסית ותשואה כלכלית.'
               };
             }).sort((a, b) => b.interest_num - a.interest_num);
 
@@ -220,53 +216,18 @@
           const matchSearch = !searchQuery || 
             item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.sector?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.country?.toLowerCase().includes(searchQuery.toLowerCase());
+            item.country?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.catalyst?.toLowerCase().includes(searchQuery.toLowerCase());
           return matchCountry && matchStage && matchSearch;
         });
       }, [data, selectedCountry, selectedStage, searchQuery]);
 
-      const handleExportExcel = () => {
-        if (data.length === 0) {
-          alert('אין נתונים זמינים לייצוא כרגע.');
-          return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const countryList = COUNTRIES.filter(c => c.id !== 'הכל').map(c => c.id);
-
-        const allFormatted = data.map(row => ({
-          'חברה': row.name,
-          'מדינה': row.country,
-          'סקטור': row.sector,
-          'שלב': row.stage,
-          'רמת עניין': row.interest_level || row.interest_num,
-          'המניע': row.driver_type,
-          'שווי מוערך': row.valuation || '-',
-          'הון שגויס': row.raised || '-'
-        }));
-        const wsAll = XLSX.utils.json_to_sheet(allFormatted);
-        XLSX.utils.book_append_sheet(wb, wsAll, 'כל המדינות');
-
-        countryList.forEach(countryName => {
-          const countryRows = data
-            .filter(item => item.country === countryName)
-            .map(row => ({
-              'חברה': row.name,
-              'סקטור': row.sector,
-              'שלב': row.stage,
-              'רמת עניין': row.interest_level || row.interest_num,
-              'המניע': row.driver_type,
-              'שווי מוערך': row.valuation || '-',
-              'הון שגויס': row.raised || '-'
-            }));
-
-          if (countryRows.length > 0) {
-            const wsCountry = XLSX.utils.json_to_sheet(countryRows);
-            XLSX.utils.book_append_sheet(wb, wsCountry, countryName.substring(0, 30));
-          }
-        });
-
-        XLSX.writeFile(wb, `LatAm_Investment_Research_${new Date().toISOString().slice(0,10)}.xlsx`);
+      const handleCopyShareLink = () => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?view=share`;
+        navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
       };
 
       const stageTooltips = {
@@ -279,49 +240,33 @@
       return (
         <div className="min-h-screen bg-[#0B0F14] text-gray-200 pb-16">
           <header className="border-b border-[#1E2732] bg-[#0E131A]/90 backdrop-blur-md sticky top-0 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-[#B2FF05] shadow-[0_0_12px_#B2FF05]"></div>
                   <h1 className="text-xl font-black tracking-tight text-white">
                     LATAM <span className="text-[#B2FF05]">INVEST</span> TERMINAL
                   </h1>
+                  <span className="text-[11px] bg-[#1A232E] text-gray-400 border border-[#2D3A4B] px-2.5 py-0.5 rounded-full">
+                    דוח מחקר מאומת • תצוגה בלבד
+                  </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  מנוע מחקר ומודיעין עסקי לשווקים מתעוררים באמריקה הלטינית
+                  סקירת שוק ומודיעין עסקי לשווקים מתעוררים באמריקה הלטינית {lastUpdated ? `• מהדורת ${lastUpdated}` : ''}
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl px-3.5 py-2 flex items-center gap-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    סריקה אוטומטית: כל יום שני 08:00
-                  </div>
-                  <span className="text-gray-600">|</span>
-                  <div className="text-gray-400">
-                    עודכן לאחרונה: <span className="text-gray-200 font-medium">{lastUpdated || 'טוען...'}</span>
-                  </div>
+              {!isSharedView && (
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleCopyShareLink}
+                    className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(178,255,5,0.2)]"
+                  >
+                    <IconShare />
+                    {copied ? 'הקישור הועתק! (מוכן לשליחה)' : 'העתק קישור לתצוגה בלבד'}
+                  </button>
                 </div>
-
-                <a 
-                  href={githubRepoUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 transition-all"
-                >
-                  <IconRefresh />
-                  בדיקה יזומה עכשיו
-                </a>
-
-                <button 
-                  onClick={handleExportExcel}
-                  className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(178,255,5,0.2)]"
-                >
-                  <IconDownload />
-                  ייצוא כל הנתונים (Excel)
-                </button>
-              </div>
+              )}
             </div>
           </header>
 
@@ -398,34 +343,31 @@
                 <table className="w-full text-right border-collapse">
                   <thead>
                     <tr className="border-b border-[#1E2732] text-gray-400 text-xs bg-[#141B24]">
-                      <th className="py-4 px-6 font-medium">חברה</th>
-                      <th className="py-4 px-6 font-medium">מדינה</th>
-                      <th className="py-4 px-6 font-medium">סקטור</th>
-                      <th className="py-4 px-6 font-medium text-center">
+                      <th className="py-4 px-5 font-medium">חברה</th>
+                      <th className="py-4 px-4 font-medium">מדינה</th>
+                      <th className="py-4 px-4 font-medium">סקטור</th>
+                      <th className="py-4 px-4 font-medium text-center">
                         <Tooltip text="סיווג החברה: טרנדיות (רעש וחיפושים ברשת) מול מומנטום (צמיחה עסקית וגיוסים מוכחים), לקראת הנפקה או חברות עוגן חזקות." position="bottom">
                           שלב
                         </Tooltip>
                       </th>
-                      <th className="py-4 px-6 font-medium">
-                        <Tooltip text="מבוסס על נתוני נפח חיפוש יחסי ב-Google Trends (ציון 0-100) לאורך 30 הימים האחרונים במדינת היעד." position="bottom">
-                          עניין ↓
-                        </Tooltip>
-                      </th>
-                      <th className="py-4 px-6 font-medium">המניע המרכזי</th>
-                      <th className="py-4 px-6 font-medium">הון שגויס</th>
-                      <th className="py-4 px-6 font-medium">שווי מוערך</th>
+                      <th className="py-4 px-4 font-medium">עניין ↓</th>
+                      <th className="py-4 px-4 font-medium">המניע המרכזי</th>
+                      <th className="py-4 px-4 font-medium">למה בכותרות עכשיו</th>
+                      <th className="py-4 px-4 font-medium">הון שגויס</th>
+                      <th className="py-4 px-5 font-medium">שווי מוערך</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1E2732]/60 text-sm">
                     {loading ? (
                       <tr>
-                        <td colSpan="8" className="py-16 text-center text-gray-500">
-                          טוען נתונים חיים ממסד הנתונים...
+                        <td colSpan="9" className="py-16 text-center text-gray-500">
+                          טוען נתוני מחקר...
                         </td>
                       </tr>
                     ) : filteredData.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="py-16 text-center text-gray-500">
+                        <td colSpan="9" className="py-16 text-center text-gray-500">
                           לא נמצאו חברות התואמות לסינון הנוכחי.
                         </td>
                       </tr>
@@ -436,33 +378,33 @@
                           onClick={() => setSelectedCompany(company)}
                           className="hover:bg-[#17202B] transition-colors cursor-pointer group"
                         >
-                          <td className="py-4 px-6">
+                          <td className="py-4 px-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#1A232E] border border-[#2A3644] flex items-center justify-center font-bold text-xs text-gray-300 group-hover:border-[#B2FF05]/50 group-hover:text-[#B2FF05] transition-colors">
+                              <div className="w-10 h-10 rounded-xl bg-[#1A232E] border border-[#2A3644] flex items-center justify-center font-bold text-xs text-gray-300 group-hover:border-[#B2FF05]/50 group-hover:text-[#B2FF05] transition-colors shrink-0">
                                 {getInitials(company.name)}
                               </div>
                               <div>
                                 <div className="font-bold text-white group-hover:text-[#B2FF05] transition-colors">
                                   {company.name}
                                 </div>
-                                <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
                                   <span className="text-emerald-400">↗</span>
                                   <span>{company.status || 'פרטית'}</span>
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-6 text-gray-300 text-xs">{company.country}</td>
-                          <td className="py-4 px-6 text-gray-400 text-xs">{company.sector}</td>
-                          <td className="py-4 px-6 text-center">
+                          <td className="py-4 px-4 text-gray-300 text-xs whitespace-nowrap">{company.country}</td>
+                          <td className="py-4 px-4 text-gray-400 text-xs">{company.sector}</td>
+                          <td className="py-4 px-4 text-center whitespace-nowrap">
                             <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(company.stage)}`}>
                               {company.stage}
                             </span>
                           </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2.5">
                               <span className="font-bold text-white w-6">{company.interest_num}</span>
-                              <div className="w-16 h-1.5 bg-[#1E2732] rounded-full overflow-hidden">
+                              <div className="w-14 h-1.5 bg-[#1E2732] rounded-full overflow-hidden">
                                 <div 
                                   className="h-full bg-[#B2FF05] rounded-full" 
                                   style={{ width: `${Math.min(100, company.interest_num)}%` }}
@@ -470,9 +412,12 @@
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-6 text-gray-300 text-xs">{company.driver_type}</td>
-                          <td className="py-4 px-6 text-gray-300 font-mono text-xs">{company.raised || '-'}</td>
-                          <td className="py-4 px-6 font-bold text-white font-mono text-xs">{company.valuation || '-'}</td>
+                          <td className="py-4 px-4 text-gray-300 text-xs">{company.driver_type}</td>
+                          <td className="py-4 px-4 text-gray-400 text-xs max-w-[220px] truncate" title={company.catalyst}>
+                            {company.catalyst || 'פעילות צומחת בשוק המקומי'}
+                          </td>
+                          <td className="py-4 px-4 text-gray-300 font-mono text-xs whitespace-nowrap">{company.raised || 'לא פורסם'}</td>
+                          <td className="py-4 px-5 font-bold text-white font-mono text-xs whitespace-nowrap">{company.valuation || 'לא פורסם'}</td>
                         </tr>
                       ))
                     )}
@@ -488,7 +433,7 @@
               onClick={() => setSelectedCompany(null)}
             >
               <div 
-                className="bg-[#0F151D] border border-[#232D36] rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl relative"
+                className="bg-[#0F151D] border border-[#232D36] rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl relative"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-start justify-between border-b border-[#1E2732] pb-4">
@@ -518,12 +463,12 @@
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">שווי מוערך</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.valuation || '-'}</div>
+                    <div className="text-xs text-gray-500">שווי מוערך מאומת</div>
+                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.valuation || 'לא פורסם'}</div>
                   </div>
                   <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">הון שגויס</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.raised || '-'}</div>
+                    <div className="text-xs text-gray-500">הון שגויס מאומת</div>
+                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.raised || 'לא פורסם'}</div>
                   </div>
                   <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
                     <div className="text-xs text-gray-500">רמת עניין</div>
@@ -531,28 +476,30 @@
                   </div>
                 </div>
 
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5 flex flex-col items-center">
-                  <div className="text-xs text-gray-500 mb-3">מדד עניין וחיפושים</div>
-                  <div className="flex items-center gap-4 w-full max-w-md justify-center">
-                    <Tooltip text="מבוסס על נפח חיפוש יחסי ב-Google Trends (0-100) ב-30 הימים האחרונים" position="top">
-                      <span className="text-sm text-gray-300 font-medium">עניין</span>
-                    </Tooltip>
-                    <span className="text-white font-bold">{selectedCompany.interest_num}</span>
-                    <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#B2FF05] rounded-full" 
-                        style={{ width: `${Math.min(100, selectedCompany.interest_num)}%` }}
-                      ></div>
-                    </div>
+                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-300">קטליזטור וסיקור חדשותי אחרון</span>
+                    {selectedCompany.source_url && (
+                      <a 
+                        href={selectedCompany.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <span>לכתבת המקור</span>
+                        <IconExternal />
+                      </a>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {selectedCompany.catalyst || 'פעילות צומחת בשוק המקומי.'}
+                  </p>
                 </div>
 
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                  <h3 className="text-sm font-bold text-gray-300 flex items-center gap-2 mb-2">
+                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-4">
+                  <h3 className="text-xs font-bold text-gray-300 flex items-center gap-2 mb-1.5">
                     <IconActivity />
-                    <Tooltip text="מבוסס על ניתוח סנטימנט ושיח ברשת - האם קהל היעד מונע מחיבור רגשי (מותג, קהילה, טרנד) או משיקולים פיננסיים טהורים (תשואה, חיסכון בעמלות)." position="top">
-                      המניע (רגש מול כסף)
-                    </Tooltip>
+                    המניע המרכזי (רגש מול כסף)
                   </h3>
                   <div className="text-xs text-[#B2FF05] font-medium mb-1">{selectedCompany.driver_type}</div>
                   <p className="text-xs text-gray-400 leading-relaxed">
