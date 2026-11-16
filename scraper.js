@@ -11,7 +11,6 @@ if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// הגדרת המדינות, קוד המדינה ב-Google Trends ושאילתות חדשות חיות
 const TARGET_COUNTRIES = [
   { name: "ברזיל", geo: "BR", newsQuery: "startup OR fintech OR unicórnio Brasil investimento" },
   { name: "מקסיקו", geo: "MX", newsQuery: "startup OR fintech OR inversión México empresa tecnología" },
@@ -24,12 +23,25 @@ const TARGET_COUNTRIES = [
   { name: "קוסטה ריקה", geo: "CR", newsQuery: "startup OR fintech OR tecnología Costa Rica inversión" }
 ];
 
-// שליפת כותרות חדשות חיות מ-Google News RSS (ללא צורך במפתח API)
+// פונקציית עזר עם הגבלת זמן (Timeout) כדי למנוע תקיעות
+async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
 async function fetchLiveNews(query, geo) {
   try {
     const encodedQuery = encodeURIComponent(query);
     const url = `https://news.google.com/rss/search?q=${encodedQuery}+when:30d&hl=es-419&gl=${geo}&ceid=${geo}:es-419`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 7000);
     const xml = await res.text();
     
     const titles = [];
@@ -43,16 +55,15 @@ async function fetchLiveNews(query, geo) {
     }
     return titles;
   } catch (e) {
-    console.warn(`⚠️ לא ניתן למשוך חדשות עבור ${geo}:`, e.message);
+    console.warn(`⚠️ דילוג על משיכת חדשות עבור ${geo} (חריגת זמן או חסימה)`);
     return [];
   }
 }
 
-// שליפת נושאים חמים מ-Google Trends Daily RSS הרשמי
 async function fetchGoogleTrends(geo) {
   try {
     const url = `https://trends.google.com/trending/rss?geo=${geo}`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, {}, 5000);
     const xml = await res.text();
     
     const trends = [];
@@ -71,18 +82,18 @@ async function fetchGoogleTrends(geo) {
 }
 
 async function analyzeCountryData(countryObj) {
-  console.log(`🔍 אוסף חדשות חיות ונתוני Google Trends עבור: ${countryObj.name}...`);
+  console.log(`🔍 אוסף נתונים עבור: ${countryObj.name}...`);
 
   const [newsHeadlines, trendingNow] = await Promise.all([
     fetchLiveNews(countryObj.newsQuery, countryObj.geo),
     fetchGoogleTrends(countryObj.geo)
   ]);
 
-  console.log(`   📰 נמצאו ${newsHeadlines.length} כתבות עדכניות ו-${trendingNow.length} חיפושים חמים.`);
+  console.log(`   📰 נמצאו ${newsHeadlines.length} כתבות ו-${trendingNow.length} חיפושים חמים.`);
 
   const prompt = `
 אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית.
-לפניך נתונים חיים שנאספו עכשיו מהרשת עבור ${countryObj.name}:
+לפניך נתונים חיים שנאספו מהרשת עבור ${countryObj.name}:
 
 כותרות חדשות עסקיות וטכנולוגיות מ-30 הימים האחרונים ב${countryObj.name}:
 ${newsHeadlines.length > 0 ? newsHeadlines.map(t => `- ${t}`).join('\n') : 'אין כותרות זמינות - התבסס על החברות המובילות והבולטות ביותר במדינה.'}
@@ -106,14 +117,14 @@ ${trendingNow.length > 0 ? trendingNow.join(', ') : 'לא זמין'}
 `;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiApiKey}`, {
+    const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.2 }
       })
-    });
+    }, 20000);
 
     const data = await response.json();
     if (data.error) {
@@ -137,7 +148,7 @@ ${trendingNow.length > 0 ? trendingNow.join(', ') : 'לא זמין'}
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר המשולב (Google News + Google Trends + Gemini)...");
+  console.log("🚀 מפעיל את סוכן המחקר האוטונומי...");
   
   for (const countryObj of TARGET_COUNTRIES) {
     const companies = await analyzeCountryData(countryObj);
@@ -169,8 +180,7 @@ async function runAgent() {
       console.log(`✅ נשמרו/עודכנו ${companies.length} חברות עבור ${countryObj.name}.`);
     }
 
-    // השהייה של 8 שניות בין מדינה למדינה לשמירה על קצב תקין מול ה-API
-    await new Promise(resolve => setTimeout(resolve, 8000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
   }
 
   console.log("🎉 הסריקה הושלמה בהצלחה!");
