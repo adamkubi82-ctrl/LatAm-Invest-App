@@ -11,23 +11,93 @@ if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const COUNTRIES = [
-  "ברזיל", "מקסיקו", "קולומביה", "צ'ילה", "ארגנטינה", 
-  "פרו", "אורוגוואי", "אקוודור", "קוסטה ריקה"
+// הגדרת המדינות, קוד המדינה ב-Google Trends ושאילתות חדשות חיות
+const TARGET_COUNTRIES = [
+  { name: "ברזיל", geo: "BR", newsQuery: "startup OR fintech OR unicórnio Brasil investimento" },
+  { name: "מקסיקו", geo: "MX", newsQuery: "startup OR fintech OR inversión México empresa tecnología" },
+  { name: "קולומביה", geo: "CO", newsQuery: "startup OR fintech OR inversión Colombia empresa tecnología" },
+  { name: "צ'ילה", geo: "CL", newsQuery: "startup OR fintech OR inversión Chile empresa tecnología" },
+  { name: "ארגנטינה", geo: "AR", newsQuery: "startup OR fintech OR unicornio Argentina inversión" },
+  { name: "פרו", geo: "PE", newsQuery: "startup OR fintech OR inversión Perú empresa tecnología" },
+  { name: "אורוגוואי", geo: "UY", newsQuery: "startup OR fintech OR tecnología Uruguay inversión" },
+  { name: "אקוודור", geo: "EC", newsQuery: "startup OR fintech OR tecnología Ecuador inversión" },
+  { name: "קוסטה ריקה", geo: "CR", newsQuery: "startup OR fintech OR tecnología Costa Rica inversión" }
 ];
 
-async function researchCountryWithAI(country) {
-  console.log(`🔍 מתחיל מחקר AI עבור: ${country}...`);
+// שליפת כותרות חדשות חיות מ-Google News RSS (ללא צורך במפתח API)
+async function fetchLiveNews(query, geo) {
+  try {
+    const encodedQuery = encodeURIComponent(query);
+    const url = `https://news.google.com/rss/search?q=${encodedQuery}+when:30d&hl=es-419&gl=${geo}&ceid=${geo}:es-419`;
+    const res = await fetch(url);
+    const xml = await res.text();
+    
+    const titles = [];
+    const regex = /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null && titles.length < 25) {
+      const title = match[1] || match[2];
+      if (title && !title.includes("Google News")) {
+        titles.push(title);
+      }
+    }
+    return titles;
+  } catch (e) {
+    console.warn(`⚠️ לא ניתן למשוך חדשות עבור ${geo}:`, e.message);
+    return [];
+  }
+}
+
+// שליפת נושאים חמים מ-Google Trends Daily RSS הרשמי
+async function fetchGoogleTrends(geo) {
+  try {
+    const url = `https://trends.google.com/trending/rss?geo=${geo}`;
+    const res = await fetch(url);
+    const xml = await res.text();
+    
+    const trends = [];
+    const regex = /<title>(.*?)<\/title>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null && trends.length < 20) {
+      const term = match[1];
+      if (term && !term.includes("Daily Search Trends")) {
+        trends.push(term);
+      }
+    }
+    return trends;
+  } catch (e) {
+    return [];
+  }
+}
+
+async function analyzeCountryData(countryObj) {
+  console.log(`🔍 אוסף חדשות חיות ונתוני Google Trends עבור: ${countryObj.name}...`);
+
+  const [newsHeadlines, trendingNow] = await Promise.all([
+    fetchLiveNews(countryObj.newsQuery, countryObj.geo),
+    fetchGoogleTrends(countryObj.geo)
+  ]);
+
+  console.log(`   📰 נמצאו ${newsHeadlines.length} כתבות עדכניות ו-${trendingNow.length} חיפושים חמים.`);
 
   const prompt = `
 אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית.
-בצע מחקר ומצא 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות או סטארט-אפים בולטים הפעילים משמעותית ב${country} (חברות מקומיות או אזוריות מובילות).
+לפניך נתונים חיים שנאספו עכשיו מהרשת עבור ${countryObj.name}:
 
-החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק (אלו שמות העמודות במסד הנתונים):
+כותרות חדשות עסקיות וטכנולוגיות מ-30 הימים האחרונים ב${countryObj.name}:
+${newsHeadlines.length > 0 ? newsHeadlines.map(t => `- ${t}`).join('\n') : 'אין כותרות זמינות - התבסס על החברות המובילות והבולטות ביותר במדינה.'}
+
+חיפושים חמים כרגע ב-Google Trends ב${countryObj.name}:
+${trendingNow.length > 0 ? trendingNow.join(', ') : 'לא זמין'}
+
+המשימה שלך:
+זהה וחלץ בדיוק 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים אמיתיים ובולטים הפעילים ב${countryObj.name} (תן עדיפות לחברות שמופיעות בחדשות שלמעלה או בטרנדים, והשלם עם חברות הטק/פינטק המובילות במדינה עד ל-8 חברות). אל תמציא שמות של חברות.
+
+החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק:
 [
   {
     "name": "שם החברה באנגלית (לדוגמה: Nubank או Kavak)",
-    "country": "${country}",
+    "country": "${countryObj.name}",
     "industry": "סקטור בעברית (לדוגמה: פינטק, מסחר אלקטרוני, בנקאות דיגיטלית)",
     "interest_level": "אחת מהאפשרויות בלבד: גבוה מאוד | גבוה | במגמת עלייה | בינוני",
     "motivation": "אחת מהאפשרויות בלבד: כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית"
@@ -41,37 +111,36 @@ async function researchCountryWithAI(country) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }],
         generationConfig: { temperature: 0.2 }
       })
     });
 
     const data = await response.json();
     if (data.error) {
-      console.error(`❌ שגיאת API מ-Google עבור ${country}:`, data.error.message);
+      console.error(`❌ שגיאת API מ-Google עבור ${countryObj.name}:`, data.error.message);
       return [];
     }
 
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error(`⚠️ פורמט JSON לא תקין עבור ${country}`);
+      console.error(`⚠️ פורמט JSON לא תקין עבור ${countryObj.name}`);
       return [];
     }
     
     const companies = JSON.parse(jsonMatch[0]);
     return Array.isArray(companies) ? companies : [];
   } catch (error) {
-    console.error(`❌ שגיאה בעיבוד הנתונים עבור ${country}:`, error.message);
+    console.error(`❌ שגיאה בעיבוד הנתונים עבור ${countryObj.name}:`, error.message);
     return [];
   }
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר האוטונומי...");
+  console.log("🚀 מפעיל את סוכן המחקר המשולב (Google News + Google Trends + Gemini)...");
   
-  for (const country of COUNTRIES) {
-    const companies = await researchCountryWithAI(country);
+  for (const countryObj of TARGET_COUNTRIES) {
+    const companies = await analyzeCountryData(countryObj);
     
     if (companies.length > 0) {
       for (const comp of companies) {
@@ -97,10 +166,11 @@ async function runAgent() {
           if (error) console.error(`❌ שגיאת הכנסה (${item.name}):`, error.message);
         }
       }
-      console.log(`✅ נשמרו/עודכנו ${companies.length} חברות עבור ${country}.`);
+      console.log(`✅ נשמרו/עודכנו ${companies.length} חברות עבור ${countryObj.name}.`);
     }
 
-    await new Promise(resolve => setTimeout(resolve, 6000));
+    // השהייה של 8 שניות בין מדינה למדינה לשמירה על קצב תקין מול ה-API
+    await new Promise(resolve => setTimeout(resolve, 8000));
   }
 
   console.log("🎉 הסריקה הושלמה בהצלחה!");
