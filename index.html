@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>מנוע חיפוש - חברות באמריקה הלטינית</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const supabaseUrl = 'https://oikogvyjchqjwxfembcd.supabase.co';
+    const supabaseKey = 'sb_publishable_wfndEaEpiSiJ0ogGOmqF8g_XGvOx1h4';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    const countries = ["הכל", "ארגנטינה", "צ'ילה", "קולומביה", "מקסיקו", "פרו", "אורוגוואי", "אקוודור", "אל סלבדור", "גואטמלה"];
+
+    function App() {
+      const [companies, setCompanies] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [filter, setFilter] = React.useState("הכל");
+      const [expandedId, setExpandedId] = React.useState(null);
+
+      React.useEffect(() => {
+        async function loadData() {
+          const { data } = await supabase.from('latam_companies').select('*');
+          if (data) setCompanies(data);
+          setLoading(false);
+        }
+        loadData();
+      }, []);
+
+      const exportToExcel = () => {
+        const wb = XLSX.utils.book_new();
+        const countriesList = countries.filter(c => c !== "הכל");
+        
+        countriesList.forEach(country => {
+          const countryData = companies.filter(c => c.country === country);
+          if (countryData.length > 0) {
+            const wsData = countryData.map(c => ({
+              "שם החברה": c.name,
+              "תחום": c.industry,
+              "רמת עניין": c.interest_level,
+              "מניע השקעה": c.motivation,
+              "מה החברה עושה": c.description,
+              "למה להשקיע": c.why_invest
+            }));
+            const ws = XLSX.utils.json_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, country.substring(0, 31)); // הגבלת שם לשונית
+          }
+        });
+        XLSX.writeFile(wb, "LatAm_Investments.xlsx");
+      };
+
+      const filteredCompanies = filter === "הכל" ? companies : companies.filter(c => c.country === filter);
+
+      return (
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800">סקירת חברות השקעה - אמריקה הלטינית</h1>
+            <button onClick={exportToExcel} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow">
+              ייצוא נתונים לאקסל
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-6">
+            {countries.map(c => (
+              <button 
+                key={c} 
+                onClick={() => setFilter(c)}
+                className={`py-1 px-4 rounded-full border ${filter === c ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="w-full text-right">
+              <thead className="bg-gray-100 border-b">
+                <tr>
+                  <th className="p-4">שם חברה</th>
+                  <th className="p-4">מדינה</th>
+                  <th className="p-4">תחום</th>
+                  <th className="p-4 group relative tooltip">
+                    רמת עניין <span className="text-blue-500 cursor-pointer">ⓘ</span>
+                    <div className="tooltip-text invisible opacity-0 absolute top-full mt-2 w-48 p-2 bg-gray-800 text-white text-sm rounded shadow-lg z-10 transition-opacity">
+                      מבוסס על נפח חיפושים בגוגל טרנדס בחודש האחרון.
+                    </div>
+                  </th>
+                  <th className="p-4 group relative tooltip">
+                    מניע <span className="text-blue-500 cursor-pointer">ⓘ</span>
+                    <div className="tooltip-text invisible opacity-0 absolute top-full mt-2 w-48 p-2 bg-gray-800 text-white text-sm rounded shadow-lg z-10 transition-opacity">
+                      האם ההשקעה מונעת מחיבור רגשי למותג או משיקולי כסף/תשואה טהורים.
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="5" className="text-center p-8 text-gray-500">טוען נתונים מהענן...</td></tr>
+                ) : filteredCompanies.length === 0 ? (
+                  <tr><td colSpan="5" className="text-center p-8 text-gray-500">עדיין אין נתונים בטבלה. המערכת תתחיל לאסוף נתונים בקרוב.</td></tr>
+                ) : (
+                  filteredCompanies.map(company => (
+                    <React.Fragment key={company.id}>
+                      <tr 
+                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setExpandedId(expandedId === company.id ? null : company.id)}
+                      >
+                        <td className="p-4 font-bold text-blue-600">{company.name}</td>
+                        <td className="p-4">{company.country}</td>
+                        <td className="p-4">{company.industry}</td>
+                        <td className="p-4">{company.interest_level}</td>
+                        <td className="p-4">{company.motivation}</td>
+                      </tr>
+                      {expandedId === company.id && (
+                        <tr className="bg-blue-50 border-b">
+                          <td colSpan="5" className="p-4 text-sm">
+                            <p className="mb-2"><strong>מה החברה עושה:</strong> {company.description}</p>
+                            <p><strong>למה להשקיע:</strong> {company.why_invest}</p>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
