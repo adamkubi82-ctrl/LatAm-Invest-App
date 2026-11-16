@@ -81,7 +81,7 @@ async function fetchGoogleTrends(geo) {
 
 // קריאה ל-Gemini עם ניסיונות חוזרים ומעבר בין מודלים במקרה של עומס
 async function callGeminiWithFallback(prompt) {
-  const models = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+ const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
   
   for (const model of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
