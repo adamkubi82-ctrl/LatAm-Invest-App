@@ -48,17 +48,27 @@
       { id: 'מומנטום', label: 'מומנטום', color: 'bg-orange-500' }
     ];
 
-    // --- קומפוננטת טולטיפ ---
-    const Tooltip = ({ text, children }) => (
-      <div className="relative group inline-flex items-center gap-1.5 cursor-help">
-        {children}
-        <div className="text-gray-500 group-hover:text-[#B2FF05] transition-colors"><IconInfo /></div>
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-3 bg-[#1a232c] text-gray-200 text-xs rounded-xl shadow-xl z-50 border border-[#232D36] font-normal normal-case text-right whitespace-normal leading-relaxed">
-          {text}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2.5 h-2.5 bg-[#1a232c] border-b border-l border-[#232D36] transform -rotate-45"></div>
+    // --- קומפוננטת טולטיפ מתוקנת (ללא חיתוכים) ---
+    const Tooltip = ({ text, children, position = 'bottom' }) => {
+      const positionClasses = position === 'bottom' 
+        ? "top-full left-1/2 -translate-x-1/2 mt-2" // נפתח כלפי מטה
+        : "bottom-full left-1/2 -translate-x-1/2 mb-2"; // נפתח כלפי מעלה
+        
+      const arrowClasses = position === 'bottom'
+        ? "bottom-full left-1/2 -translate-x-1/2 -mb-1 border-t border-r transform -rotate-45"
+        : "top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-l transform -rotate-45";
+
+      return (
+        <div className="relative group inline-flex items-center gap-1.5 cursor-help">
+          {children}
+          <div className="text-gray-500 group-hover:text-[#B2FF05] transition-colors"><IconInfo /></div>
+          <div className={`absolute ${positionClasses} hidden group-hover:block w-64 p-3 bg-[#1a232c] text-gray-200 text-xs rounded-xl shadow-xl z-[100] border border-[#232D36] font-normal normal-case text-right whitespace-normal leading-relaxed`}>
+            {text}
+            <div className={`absolute ${arrowClasses} w-2.5 h-2.5 bg-[#1a232c] border-[#232D36]`}></div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
 
     const getHash = (str) => {
       let hash = 0;
@@ -71,16 +81,18 @@
     const generateFallbacks = () => {
       const fallbacks = [];
       const industries = ['פינטק ואשראי', 'בנקאות', 'מסחר אלקטרוני', 'תשלומים', 'בנקאות לעסקים', 'רכב משומש', 'טלקום'];
+      const mockNames = ['FinLat', 'PagoSur', 'NovaBank', 'CrediGo', 'MercadoPlus', 'AutoLat', 'HealthSync', 'EduLatam', 'LogisX', 'AgriSur', 'TechSur', 'LatAmPay'];
       
       COUNTRIES.filter(c => c !== 'הכל').forEach(country => {
         for (let i = 1; i <= 5; i++) {
           const hash = getHash(`${country}-${i}`);
           const stage = STAGES[1 + (hash % 4)].id;
+          const companyName = `${mockNames[hash % mockNames.length]} ${i}`;
           
           fallbacks.push({
             id: `fb-${country}-${i}`,
-            name: `Company ${i} ${country.substring(0,2)}`,
-            ticker: `C${i}${country.substring(0,1).toUpperCase()}`,
+            name: companyName,
+            ticker: companyName.substring(0,3).toUpperCase(),
             country: country,
             industry: industries[hash % industries.length],
             stage: stage,
@@ -169,20 +181,9 @@
               };
             });
 
-            const grouped = {};
-            enrichedDB.forEach(d => { grouped[d.country] = (grouped[d.country] || 0) + 1; });
+            // בוטל מנגנון יצירת חברות דמה (Fallbacks). מוצג רק מידע אמיתי ממסד הנתונים.
 
-            const fallbacks = generateFallbacks();
-            const finalData = [...enrichedDB];
-            
-            fallbacks.forEach(f => {
-              if ((grouped[f.country] || 0) < 5) {
-                finalData.push(f);
-                grouped[f.country] = (grouped[f.country] || 0) + 1;
-              }
-            });
-
-            setData(finalData);
+            setData(enrichedDB);
           } catch (err) {
             console.error("Fetch error:", err);
           } finally {
@@ -258,7 +259,7 @@
               </div>
             </div>
             <div className="flex gap-4">
-              <a href="https://github.com/adamkubi82-ctrl/LatAm-Invest-App/actions" target="_blank" className="flex items-center gap-2 bg-[#131A22] border border-[#232D36] hover:border-gray-500 text-white px-4 py-2 rounded-full text-sm transition-all cursor-pointer">
+              <a href="https://github.com/adamkubi82-ctrl/LatAm-Invest-App/actions/workflows/update-data.yml" target="_blank" className="flex items-center gap-2 bg-[#131A22] border border-[#232D36] hover:border-gray-500 text-white px-4 py-2 rounded-full text-sm transition-all cursor-pointer">
                 <IconActivity />
                 בדיקה יזומה עכשיו
               </a>
@@ -315,12 +316,12 @@
                       <th className="py-4 px-6 font-medium">מדינה</th>
                       <th className="py-4 px-6 font-medium">סקטור</th>
                       <th className="py-4 px-6 font-medium text-center">שלב</th>
-                      <th className="py-4 px-6 font-medium">
-                        <Tooltip text="מבוסס על נתוני נפח חיפוש יחסי ב-Google Trends (ציון 0-100) לאורך 30 הימים האחרונים במדינת היעד.">
-                          עניין ↓
-                        </Tooltip>
-                      </th>
-                      <th className="py-4 px-6 font-medium">קליקים/חודש</th>
+                  <th className="py-4 px-6 font-medium">
+                    <Tooltip text="מבוסס על נתוני נפח חיפוש יחסי ב-Google Trends (ציון 0-100) לאורך 30 הימים האחרונים במדינת היעד." position="bottom">
+                      עניין ↓
+                    </Tooltip>
+                  </th>
+                  <th className="py-4 px-6 font-medium">קליקים/חודש</th>
                       <th className="py-4 px-6 font-medium">מודעות/חודש</th>
                       <th className="py-4 px-6 font-medium">הון שגויס</th>
                       <th className="py-4 px-6 font-medium">שווי מוערך</th>
@@ -440,15 +441,15 @@
                   </div>
 
                   <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5 flex flex-col items-center">
-                    <div className="text-sm text-gray-500 mb-4">מדדים</div>
-                    <div className="flex gap-8 w-full justify-center">
-                      <div className="flex items-center gap-3">
-                        <Tooltip text="מבוסס על Google Trends (0-100) ב-30 הימים האחרונים">
-                          <span className="text-sm text-gray-300">עניין</span>
-                        </Tooltip>
-                        <span className="text-white font-bold">{selectedCompany.interest_num}</span>
-                        <div className="w-24 h-1.5 bg-gray-800 rounded-full"><div className="h-full bg-orange-400 rounded-full" style={{width: `${selectedCompany.interest_num}%`}}></div></div>
-                      </div>
+                <div className="text-sm text-gray-500 mb-4">מדדים</div>
+                <div className="flex gap-8 w-full justify-center">
+                  <div className="flex items-center gap-3">
+                    <Tooltip text="מבוסס על Google Trends (0-100) ב-30 הימים האחרונים" position="top">
+                      <span className="text-sm text-gray-300">עניין</span>
+                    </Tooltip>
+                    <span className="text-white font-bold">{selectedCompany.interest_num}</span>
+                    <div className="w-24 h-1.5 bg-gray-800 rounded-full"><div className="h-full bg-orange-400 rounded-full" style={{width: `${selectedCompany.interest_num}%`}}></div></div>
+                  </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm text-gray-300">חשיפה</span>
                         <span className="text-white font-bold">{selectedCompany.exposure}</span>
@@ -463,13 +464,13 @@
                   </div>
 
                   <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-3">
-                      <IconActivity />
-                      <Tooltip text="מבוסס על ניתוח סנטימנט ושיח ברשת - האם קהל היעד מונע מחיבור רגשי (מותג, קהילה, טרנד) או משיקולים פיננסיים טהורים (תשואה, חיסכון בעמלות).">
-                        המניע
-                      </Tooltip>
-                    </h3>
-                    <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-3">
+                  <IconActivity />
+                  <Tooltip text="מבוסס על ניתוח סנטימנט ושיח ברשת - האם קהל היעד מונע מחיבור רגשי (מותג, קהילה, טרנד) או משיקולים פיננסיים טהורים (תשואה, חיסכון בעמלות)." position="top">
+                    המניע
+                  </Tooltip>
+                </h3>
+                <div className="space-y-3">
                       <p className="text-sm"><strong className="text-white">מה מרגיש:</strong> <span className="text-gray-400">{selectedCompany.feeling}</span></p>
                       <p className="text-sm"><strong className="text-white">מה מכניס כסף:</strong> <span className="text-gray-400">{selectedCompany.money}</span></p>
                     </div>
