@@ -1,52 +1,118 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// מושך את המפתחות הסודיים שלנו מתוך הכספת של גיטהאב
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY;
+
+if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
+  console.error("Missing required environment variables (SUPABASE_URL, SUPABASE_KEY, or GEMINI_API_KEY)");
+  process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// מאגר חברות באמריקה הלטינית
-const companies = [
-  { name: 'MercadoLibre', country: 'ארגנטינה', industry: 'מסחר אלקטרוני', description: 'האמזון של אמריקה הלטינית, ענקית מסחר ופינטק', why_invest: 'שליטה מוחלטת בשוק וצמיחה אדירה באזורים מתפתחים' },
-  { name: 'Ualá', country: 'ארגנטינה', industry: 'פינטק', description: 'אפליקציה לניהול פיננסי אישי', why_invest: 'הכניסה מיליונים למערכת הבנקאית לראשונה' },
-  { name: 'NotCo', country: "צ'ילה", industry: 'פודטק', description: 'ייצור תחליפי חלב ובשר בעזרת בינה מלאכותית', why_invest: 'שותפויות ענק עם חברות כמו קראפט-היינץ עקב חדשנות המותג' },
-  { name: 'Rappi', country: 'קולומביה', industry: 'משלוחים ושירותים', description: 'אפליקציית "הכל-כלול" למשלוחים ושירותים פיננסיים', why_invest: 'מונופול מקומי עם שירותים שרק מתרחבים' },
-  { name: 'Nubank (LatAm)', country: 'מקסיקו', industry: 'בנקאות דיגיטלית', description: 'הבנק הדיגיטלי הגדול בעולם שמתרחב כעת למקסיקו', why_invest: 'מותג שצעירים מתחברים אליו רגשית, מנצח את הבנקים הישנים' },
-  { name: 'Kavak', country: 'מקסיקו', industry: 'רכב', description: 'פלטפורמה דיגיטלית לקנייה ומכירת רכבים', why_invest: 'היוניקורן הראשון של מקסיקו, פותר בעיית אמון בשוק' },
-  { name: 'Crehana', country: 'פרו', industry: 'אד-טק (חינוך)', description: 'פלטפורמת למידה וקורסים אונליין', why_invest: 'צמיחה אדירה עקב מעבר להכשרות דיגיטליות מרחוק' },
-  { name: 'dLocal', country: 'אורוגוואי', industry: 'תשלומים', description: 'פתרונות סליקה לשווקים מתפתחים', why_invest: 'ענקיות כמו נטפליקס ואמזון משתמשות בה כדי לחייב לקוחות שם' },
-  { name: 'Kushki', country: 'אקוודור', industry: 'פינטק', description: 'תשתיות תשלומים דיגיטליים מודרניים', why_invest: 'שוק אקוודור והאזור עוברים דיגיטציה מהירה' },
-  { name: 'Bitso', country: 'אל סלבדור', industry: 'קריפטו', description: 'בורסת הקריפטו הגדולה בלאטם', why_invest: 'אימוץ חוקי של ביטקוין במדינה דוחף את הפלטפורמה קדימה' }
+const COUNTRIES = [
+  "ברזיל", "מקסיקו", "קולומביה", "צ'ילה", "ארגנטינה", 
+  "פרו", "אורוגוואי", "אקוודור", "קוסטה ריקה"
 ];
 
-// מנוע עדכון הנתונים
-async function updateData() {
-  console.log('מתחיל בעדכון הנתונים למסד...');
+async function researchCountryWithAI(country) {
+  console.log(`🔍 מתחיל מחקר AI עבור: ${country}...`);
 
-  // מנקה את הטבלה הישנה כדי להכניס נתונים טריים
-  await supabase.from('latam_companies').delete().neq('id', 0);
+  const prompt = `
+אתה אנליסט השקעות בכיר המתמחה בשווקים מתעוררים באמריקה הלטינית.
+בצע מחקר מעמיק על חברות טכנולוגיה, פינטק, מסחר אלקטרוני וסטארט-אפים בולטים הפעילים ב${country} (חברות מקומיות או חברות אזוריות ששולטות בשוק של ${country}).
 
-  const updatedCompanies = companies.map(comp => {
-    // סימולציה של ניתוח רגש מול כסף וגוגל טרנדס (כאן אפשר בהמשך לחבר API חי של מנועי חיפוש)
-    const trends = ['גבוה מאוד', 'גבוה', 'בינוני', 'במגמת עלייה'];
-    const motivations = ['כסף ותשואה (קר)', 'חיבור רגשי (מותג/קהילה)', 'כסף ותשואה (קר)', 'חדשנות טכנולוגית'];
+החזר רשימה של 5 חברות אמיתיות ומאומתות בלבד (אל תמציא חברות בשום אופן!), המשלבת 3 שכבות מחקר:
+1. חברות עוגן ותיקות ו"חזקות" עם הכנסות מוכחות.
+2. חברות שנמצאות ב"מומנטום" צמיחה חזק או "לקראת הנפקה" (Pre-IPO) בשנה האחרונה.
+3. חברות "טרנדיות" שתפסו תאוצה ושיח ברשת ב-30 הימים האחרונים.
+
+החזר את התשובה אך ורק כמערך JSON תקין (ללא סימני markdown מסביב וללא טקסט נוסף), במבנה הבא בדיוק עבור כל חברה:
+[
+  {
+    "name": "שם החברה באנגלית",
+    "country": "${country}",
+    "sector": "סקטור בעברית (למשל: פינטק ותשלומים, מסחר אלקטרוני, בנקאות דיגיטלית)",
+    "stage": "אחת מהאפשרויות בלבד: לקראת הנפקה | טרנדיות | חזקות | מומנטום",
+    "status": "פרטית או סימול בורסאי אם ציבורית (למשל: פרטית, NYSE: NU, BMV: AMX)",
+    "valuation": "שווי מוערך ריאלי (למשל: $2.5B או $800M)",
+    "raised": "סך הון שגויס ריאלי (למשל: $450M או - אם ציבורית)",
+    "interest_num": מספר שלם בין 40 ל-98 המשקף עניין חיפוש יחסי (Google Trends) ב-30 הימים האחרונים,
+    "clicks": "הערכת קליקים חודשית לאתר (למשל: 250K)",
+    "ad_spend": "הערכת הוצאה חודשית על פרסום (למשל: $180K)",
+    "growth": "שיעור צמיחה שנתי מוערך (למשל: +45%)"
+  }
+]
+`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }], // מאפשר לסוכן לחפש מידע עדכני בגוגל בזמן אמת
+        generationConfig: {
+          temperature: 0.2 // שומר על דיוק עובדתי גבוה ומונע המצאות
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (!data.candidates || !data.candidates[0]) {
+      console.error(`שגיאה בתשובת AI עבור ${country}:`, JSON.stringify(data));
+      return [];
+    }
+
+    let rawText = data.candidates[0].content.parts[0].text;
+    // ניקוי תגיות קוד אם המודל הוסיף אותן
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     
-    return {
-      ...comp,
-      interest_level: trends[Math.floor(Math.random() * trends.length)],
-      motivation: motivations[Math.floor(Math.random() * motivations.length)],
-      clicks: Math.floor(Math.random() * 50000) + 5000,
-      investment_amount: 'לא זמין פומבית'
-    };
-  });
-
-  const { error } = await supabase.from('latam_companies').insert(updatedCompanies);
-  
-  if (error) {
-    console.error('שגיאה בהכנסת נתונים:', error);
-  } else {
-    console.log('הנתונים עודכנו בהצלחה! האתר מעודכן.');
+    const companies = JSON.parse(rawText);
+    return companies;
+  } catch (error) {
+    console.error(`שגיאה בעיבוד הנתונים עבור ${country}:`, error.message);
+    return [];
   }
 }
 
-updateData();
+async function runAgent() {
+  console.log("🚀 מפעיל את סוכן המחקר האוטונומי של LatAm-Invest...");
+  
+  for (const country of COUNTRIES) {
+    const companies = await researchCountryWithAI(country);
+    
+    if (companies.length > 0) {
+      // הוספת חותמת זמן עדכנית לכל חברה
+      const enriched = companies.map(comp => ({
+        ...comp,
+        updated_at: new Date().toISOString()
+      }));
+
+      // שמירה/עדכון במסד הנתונים (Upsert לפי שם החברה ומדינה כדי למנוע כפילויות)
+      for (const item of enriched) {
+        const { data: existing } = await supabase
+          .from('latam_companies')
+          .select('id')
+          .eq('name', item.name)
+          .eq('country', item.country)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase.from('latam_companies').update(item).eq('id', existing.id);
+        } else {
+          await supabase.from('latam_companies').insert([item]);
+        }
+      }
+      console.log(`✅ עודכנו/נוספו ${enriched.length} חברות אמיתיות עבור ${country}.`);
+    }
+
+    // השהייה של 4 שניות בין מדינה למדינה כדי לכבד מגבלות קצב חינמיות
+    await new Promise(resolve => setTimeout(resolve, 4000));
+  }
+
+  console.log("🎉 הסריקה הושלמה בהצלחה! כל הנתונים מעודכנים ב-Supabase.");
+}
+
+runAgent();
