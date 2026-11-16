@@ -21,28 +21,16 @@ async function researchCountryWithAI(country) {
 
   const prompt = `
 אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית.
-בצע מחקר ומצא 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות או סטארט-אפים בולטים הפעילים משמעותית ב${country} (חברות מקומיות שהוקמו שם, או חברות אזוריות מובילות ששולטות בשוק המקומי של ${country}).
+בצע מחקר ומצא 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות או סטארט-אפים בולטים הפעילים משמעותית ב${country} (חברות מקומיות או אזוריות מובילות).
 
-הרשימה חייבת לכלול חברות אמיתיות ומאומתות בלבד (אסור להמציא שמות!), ולשלב בין 4 הקטגוריות הבאות:
-- "חזקות": חברות עוגן ותיקות ומבוססות.
-- "מומנטום": חברות בצמיחה עסקית מהירה וגיוסי הון משמעותיים.
-- "לקראת הנפקה": חברות בשלות שנמצאות בשלבי Pre-IPO.
-- "טרנדיות": חברות שמייצרות עניין גבוה וחיפושים ברשת בתקופה האחרונה.
-
-החזר אך ורק מערך JSON תקין (ללא טקסט מקדים, ללא הסברים וללא סימני \`\`\`json), במבנה הבא:
+החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק (אלו שמות העמודות במסד הנתונים):
 [
   {
-    "name": "שם החברה באנגלית",
+    "name": "שם החברה באנגלית (לדוגמה: Nubank או Kavak)",
     "country": "${country}",
-    "sector": "סקטור בעברית (למשל: פינטק ותשלומים, מסחר אלקטרוני, בנקאות)",
-    "stage": "אחת מהמילים הבאות בלבד: לקראת הנפקה | טרנדיות | חזקות | מומנטום",
-    "status": "פרטית או סימול בורסאי אם ציבורית (למשל: פרטית, NYSE: NU)",
-    "valuation": "שווי מוערך (למשל: $2.5B או $450M)",
-    "raised": "הון שגויס (למשל: $300M או - אם ציבורית)",
-    "interest_num": 75,
-    "clicks": "הערכת קליקים חודשית (למשל: 210K)",
-    "ad_spend": "הוצאה חודשית מוערכת על פרסום (למשל: $150K)",
-    "growth": "צמיחה שנתית (למשל: +42%)"
+    "industry": "סקטור בעברית (לדוגמה: פינטק, מסחר אלקטרוני, בנקאות דיגיטלית)",
+    "interest_level": "אחת מהאפשרויות בלבד: גבוה מאוד | גבוה | במגמת עלייה | בינוני",
+    "motivation": "אחת מהאפשרויות בלבד: כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית"
   }
 ]
 `;
@@ -54,29 +42,20 @@ async function researchCountryWithAI(country) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         tools: [{ google_search: {} }],
-        generationConfig: {
-          temperature: 0.2
-        }
+        generationConfig: { temperature: 0.2 }
       })
     });
 
     const data = await response.json();
-    
     if (data.error) {
       console.error(`❌ שגיאת API מ-Google עבור ${country}:`, data.error.message);
       return [];
     }
 
-    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-      console.error(`⚠️ לא התקבל טקסט עבור ${country}`);
-      return [];
-    }
-
-    let rawText = data.candidates[0].content.parts[0].text;
-    // חילוץ מערך ה-JSON בלבד למקרה שהמודל הוסיף טקסט מסביב
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.error(`⚠️ פורמט JSON לא תקין עבור ${country}:`, rawText.substring(0, 150));
+      console.error(`⚠️ פורמט JSON לא תקין עבור ${country}`);
       return [];
     }
     
@@ -89,7 +68,7 @@ async function researchCountryWithAI(country) {
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר האוטונומי (8 חברות למדינה)...");
+  console.log("🚀 מפעיל את סוכן המחקר האוטונומי...");
   
   for (const country of COUNTRIES) {
     const companies = await researchCountryWithAI(country);
@@ -97,41 +76,34 @@ async function runAgent() {
     if (companies.length > 0) {
       for (const comp of companies) {
         const item = {
-          ...comp,
-          interest_num: Number(comp.interest_num) || 65,
-          updated_at: new Date().toISOString()
+          name: comp.name,
+          country: comp.country,
+          industry: comp.industry,
+          interest_level: comp.interest_level,
+          motivation: comp.motivation
         };
 
-        const { data: existing, error: selectError } = await supabase
+        const { data: existing } = await supabase
           .from('latam_companies')
           .select('id')
           .eq('name', item.name)
           .eq('country', item.country)
           .maybeSingle();
 
-        if (selectError) {
-          console.error(`❌ שגיאת קריאה מ-Supabase (${item.name}):`, selectError.message);
-          continue;
-        }
-
         if (existing) {
-          const { error: updateError } = await supabase.from('latam_companies').update(item).eq('id', existing.id);
-          if (updateError) console.error(`❌ שגיאת עדכון (${item.name}):`, updateError.message);
+          await supabase.from('latam_companies').update(item).eq('id', existing.id);
         } else {
-          const { error: insertError } = await supabase.from('latam_companies').insert([item]);
-          if (insertError) console.error(`❌ שגיאת הכנסה (${item.name}):`, insertError.message);
+          const { error } = await supabase.from('latam_companies').insert([item]);
+          if (error) console.error(`❌ שגיאת הכנסה (${item.name}):`, error.message);
         }
       }
       console.log(`✅ נשמרו/עודכנו ${companies.length} חברות עבור ${country}.`);
-    } else {
-      console.log(`⚠️ לא נמצאו תוצאות תקינות עבור ${country} בריצה זו.`);
     }
 
-    // השהייה של 6 שניות בין מדינה למדינה כדי למנוע חסימת מכסה חינמית (Rate Limit)
     await new Promise(resolve => setTimeout(resolve, 6000));
   }
 
-  console.log("🎉 הסריקה הושלמה!");
+  console.log("🎉 הסריקה הושלמה בהצלחה!");
 }
 
 runAgent();
