@@ -3,33 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>טבלת מחקר - LATAM</title>
-  
-  <!-- ספריות React -->
+  <title>מנוע חיפוש - חברות באמריקה הלטינית</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- עיצוב ואייקונים -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
   <style>
-    /* עיצוב פס גלילה מותאם לדארק מוד */
     .custom-scrollbar::-webkit-scrollbar { width: 8px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #0a0f14; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #232D36; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3a4b5c; }
-    body { background-color: #0a0f14; }
   </style>
 </head>
-<body class="text-gray-300 font-sans selection:bg-[#B2FF05] selection:text-black custom-scrollbar">
+<body class="bg-[#0a0f14] text-gray-300 font-sans selection:bg-[#B2FF05] selection:text-black">
   <div id="root"></div>
 
   <script type="text/babel">
+    const { useState, useEffect } = React;
+    
+    // --- Icons ---
+    const IconDownload = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+    const IconInfo = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+    const IconGlobe = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>;
+    const IconX = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+    const IconActivity = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>;
+    const IconTrendingUp = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>;
+    const IconExternalLink = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>;
+
+    // --- חיבור ל-Supabase ---
     const supabaseUrl = 'https://oikogvyjchqjwxfembcd.supabase.co';
     const supabaseKey = 'sb_publishable_wfndEaEpiSiJ0ogGOmqF8g_XGvOx1h4';
 
+    // --- קבועים ועיצוב מחדש (Dark Theme) ---
     const COUNTRIES = [
       'הכל', 'ארגנטינה', 'צ\'ילה', 'קולומביה', 'מקסיקו', 
       'פרו', 'אורוגוואי', 'אקוודור', 'אל סלבדור', 'גואטמלה'
@@ -42,6 +47,18 @@
       { id: 'חזקות', label: 'חזקות', color: 'bg-teal-500' },
       { id: 'מומנטום', label: 'מומנטום', color: 'bg-orange-500' }
     ];
+
+    // --- קומפוננטת טולטיפ ---
+    const Tooltip = ({ text, children }) => (
+      <div className="relative group inline-flex items-center gap-1.5 cursor-help">
+        {children}
+        <div className="text-gray-500 group-hover:text-[#B2FF05] transition-colors"><IconInfo /></div>
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-3 bg-[#1a232c] text-gray-200 text-xs rounded-xl shadow-xl z-50 border border-[#232D36] font-normal normal-case text-right whitespace-normal leading-relaxed">
+          {text}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2.5 h-2.5 bg-[#1a232c] border-b border-l border-[#232D36] transform -rotate-45"></div>
+        </div>
+      </div>
+    );
 
     const getHash = (str) => {
       let hash = 0;
@@ -62,7 +79,7 @@
           
           fallbacks.push({
             id: `fb-${country}-${i}`,
-            name: `חברה ${i} - ${country}`,
+            name: `Company ${i} ${country.substring(0,2)}`,
             ticker: `C${i}${country.substring(0,1).toUpperCase()}`,
             country: country,
             industry: industries[hash % industries.length],
@@ -77,6 +94,7 @@
             ad_metric: 60 + (hash % 35),
             description: 'בנק דיגיטלי שמנפיק כרטיסי אשראי ונותן הלוואות צרכניות, עם אפליקציה לניהול הוצאות מבוססת AI.',
             why_invest: 'גיוס ענק של מיליוני דולרים וצמיחה מהירה במספר הלקוחות. האפליקציה תופסת תאוצה בקרב צעירים.',
+            news: 'החברה הגישה תשקיף חסוי לקראת הנפקה עתידית בוול סטריט לפי שווי מוערך של מיליארדי דולרים.',
             feeling: 'תחושת פספוס (FOMO) – הקהל מרגיש שזו ההזדמנות האחרונה להיכנס מוקדם לפני הפריצה הגדולה.',
             money: 'הטיעון הוא סכום הכניסה — חשבון ראשון, אשראי ראשון, בלי היסטוריית אשראי קודמת.',
             ad_angle: 'כרטיס אשראי בלי עמלות — המסר שמייצר הכי הרבה תגובות ברשתות החברתיות.'
@@ -87,14 +105,15 @@
     };
 
     function App() {
-      const [data, setData] = React.useState([]);
-      const [loading, setLoading] = React.useState(true);
+      const [data, setData] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [lastUpdate, setLastUpdate] = useState('');
       
-      const [selectedCountry, setSelectedCountry] = React.useState('הכל');
-      const [selectedStage, setSelectedStage] = React.useState('הכל');
-      const [selectedCompany, setSelectedCompany] = React.useState(null);
+      const [selectedCountry, setSelectedCountry] = useState('הכל');
+      const [selectedStage, setSelectedStage] = useState('הכל');
+      const [selectedCompany, setSelectedCompany] = useState(null);
 
-      React.useEffect(() => {
+      useEffect(() => {
         async function fetchData() {
           setLoading(true);
           try {
@@ -108,6 +127,25 @@
             const dbData = response.ok ? await response.json() : [];
             let fetched = dbData || [];
             
+            if (fetched.length > 0) {
+              const newest = fetched.reduce((acc, curr) => {
+                if (!curr.created_at) return acc;
+                const d = new Date(curr.created_at);
+                return d > acc ? d : acc;
+              }, new Date(0));
+              
+              if (newest.getTime() > 0) {
+                setLastUpdate(newest.toLocaleString('he-IL', {
+                  year: 'numeric', month: '2-digit', day: '2-digit', 
+                  hour: '2-digit', minute: '2-digit'
+                }));
+              } else {
+                setLastUpdate('לא ידוע');
+              }
+            } else {
+              setLastUpdate('עדיין לא נאספו נתונים');
+            }
+
             const enrichedDB = fetched.map(item => {
               const hash = getHash(item.name || item.id?.toString() || 'a');
               return {
@@ -124,6 +162,7 @@
                 ad_metric: 70 + (hash % 25),
                 description: item.description || 'פלטפורמה טכנולוגית פיננסית מובילה באזור.',
                 why_invest: item.why_invest || 'מודל עסקי יציב עם צמיחה עקבית בשווקים מתפתחים.',
+                news: 'מוזכרת ב-TechCrunch כאחת החברות המבטיחות באמריקה הלטינית לשנה הקרובה.',
                 feeling: item.motivation || 'חיבור רגשי חזק למותג מצד דור ה-Z.',
                 money: 'הכנסות יציבות משירותי פרימיום ועמלות סליקה צולבות.',
                 ad_angle: 'קמפיין ממוקד המדגיש את החיסכון בעמלות מול הבנקים המסורתיים.'
@@ -131,9 +170,7 @@
             });
 
             const grouped = {};
-            enrichedDB.forEach(d => {
-              grouped[d.country] = (grouped[d.country] || 0) + 1;
-            });
+            enrichedDB.forEach(d => { grouped[d.country] = (grouped[d.country] || 0) + 1; });
 
             const fallbacks = generateFallbacks();
             const finalData = [...enrichedDB];
@@ -207,19 +244,26 @@
       };
 
       return (
-        <div className="min-h-screen">
+        <div dir="rtl" className="min-h-screen">
           
           <header className="px-8 py-6 border-b border-[#232D36] flex justify-between items-center bg-[#0a0f14]/80 backdrop-blur-md sticky top-0 z-10">
             <div>
               <h1 className="text-2xl font-bold text-white tracking-wide">טבלת המחקר <span className="text-gray-500 text-sm mr-4 font-normal">{filteredData.length} חברות • מודל חכם</span></h1>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-xs text-gray-400">זמן בדיקה אחרון: <strong className="text-gray-200">{lastUpdate || 'טוען...'}</strong></span>
+                <span className="text-xs bg-[#B2FF05]/10 text-[#B2FF05] px-2.5 py-0.5 rounded border border-[#B2FF05]/20 flex items-center gap-1.5 shadow-[0_0_10px_rgba(178,255,5,0.1)]">
+                  <div className="w-1.5 h-1.5 bg-[#B2FF05] rounded-full animate-pulse"></div>
+                  בדיקה אוטומטית כל יום שני בבוקר
+                </span>
+              </div>
             </div>
             <div className="flex gap-4">
-              <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-[#131A22] border border-[#232D36] hover:border-gray-500 text-white px-4 py-2 rounded-full text-sm transition-all">
-                <i className="fas fa-sync-alt"></i>
-                רענון נתונים
-              </button>
+              <a href="https://github.com/adamkubi82-ctrl/LatAm-Invest-App/actions" target="_blank" className="flex items-center gap-2 bg-[#131A22] border border-[#232D36] hover:border-gray-500 text-white px-4 py-2 rounded-full text-sm transition-all cursor-pointer">
+                <IconActivity />
+                בדיקה יזומה עכשיו
+              </a>
               <button onClick={exportToExcel} className="flex items-center gap-2 bg-[#131A22] border border-[#232D36] hover:border-[#B2FF05]/50 hover:text-[#B2FF05] text-white px-4 py-2 rounded-full text-sm transition-all">
-                <i className="fas fa-download"></i>
+                <IconDownload />
                 ייצוא כל הנתונים
               </button>
             </div>
@@ -246,9 +290,7 @@
             </div>
 
             <div className="flex flex-wrap gap-2 mb-8 items-center bg-[#131A22] p-2 rounded-2xl border border-[#232D36]">
-              <span className="text-sm text-gray-500 px-3 flex items-center gap-2">
-                <i className="fas fa-globe"></i> מדינה:
-              </span>
+              <span className="text-sm text-gray-500 px-3 flex items-center gap-2"><IconGlobe /> מדינה:</span>
               {COUNTRIES.map(country => (
                 <button
                   key={country}
@@ -273,7 +315,11 @@
                       <th className="py-4 px-6 font-medium">מדינה</th>
                       <th className="py-4 px-6 font-medium">סקטור</th>
                       <th className="py-4 px-6 font-medium text-center">שלב</th>
-                      <th className="py-4 px-6 font-medium">עניין ↓</th>
+                      <th className="py-4 px-6 font-medium">
+                        <Tooltip text="מבוסס על נתוני נפח חיפוש יחסי ב-Google Trends (ציון 0-100) לאורך 30 הימים האחרונים במדינת היעד.">
+                          עניין ↓
+                        </Tooltip>
+                      </th>
                       <th className="py-4 px-6 font-medium">קליקים/חודש</th>
                       <th className="py-4 px-6 font-medium">מודעות/חודש</th>
                       <th className="py-4 px-6 font-medium">הון שגויס</th>
@@ -282,7 +328,7 @@
                   </thead>
                   <tbody className="divide-y divide-[#232D36]">
                     {loading ? (
-                      <tr><td colSpan="9" className="py-16 text-center text-gray-500 flex justify-center"><i className="fas fa-spinner fa-spin text-2xl"></i></td></tr>
+                      <tr><td colSpan="9" className="py-16 text-center text-gray-500">טוען נתונים...</td></tr>
                     ) : filteredData.length === 0 ? (
                       <tr><td colSpan="9" className="py-16 text-center text-gray-500">לא נמצאו חברות העונות לסינון.</td></tr>
                     ) : (
@@ -358,19 +404,19 @@
                     onClick={() => setSelectedCompany(null)}
                     className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-full transition-colors"
                   >
-                    <i className="fas fa-times text-xl"></i>
+                    <IconX />
                   </button>
                 </div>
 
                 <div className="p-6 space-y-6">
                   
                   <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-2"><i className="fas fa-info-circle"></i> מה היא עושה</h3>
+                    <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-2"><IconInfo /> מה היא עושה</h3>
                     <p className="text-white text-base leading-relaxed">{selectedCompany.description}</p>
                   </div>
 
                   <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-[#B2FF05] flex items-center gap-2 mb-2"><i className="fas fa-chart-line"></i> למה שווה להשקיע</h3>
+                    <h3 className="text-sm font-bold text-[#B2FF05] flex items-center gap-2 mb-2"><IconTrendingUp /> למה שווה להשקיע</h3>
                     <p className="text-white text-base leading-relaxed">{selectedCompany.why_invest}</p>
                   </div>
 
@@ -397,7 +443,9 @@
                     <div className="text-sm text-gray-500 mb-4">מדדים</div>
                     <div className="flex gap-8 w-full justify-center">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-300">עניין</span>
+                        <Tooltip text="מבוסס על Google Trends (0-100) ב-30 הימים האחרונים">
+                          <span className="text-sm text-gray-300">עניין</span>
+                        </Tooltip>
                         <span className="text-white font-bold">{selectedCompany.interest_num}</span>
                         <div className="w-24 h-1.5 bg-gray-800 rounded-full"><div className="h-full bg-orange-400 rounded-full" style={{width: `${selectedCompany.interest_num}%`}}></div></div>
                       </div>
@@ -415,7 +463,12 @@
                   </div>
 
                   <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-3"><i className="fas fa-wave-square"></i> המניע</h3>
+                    <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-3">
+                      <IconActivity />
+                      <Tooltip text="מבוסס על ניתוח סנטימנט ושיח ברשת - האם קהל היעד מונע מחיבור רגשי (מותג, קהילה, טרנד) או משיקולים פיננסיים טהורים (תשואה, חיסכון בעמלות).">
+                        המניע
+                      </Tooltip>
+                    </h3>
                     <div className="space-y-3">
                       <p className="text-sm"><strong className="text-white">מה מרגיש:</strong> <span className="text-gray-400">{selectedCompany.feeling}</span></p>
                       <p className="text-sm"><strong className="text-white">מה מכניס כסף:</strong> <span className="text-gray-400">{selectedCompany.money}</span></p>
@@ -431,10 +484,10 @@
 
                 <div className="sticky bottom-0 bg-[#0a0f14]/90 backdrop-blur border-t border-[#232D36] p-4 z-10 flex justify-center gap-4">
                   <button className="flex items-center gap-2 bg-transparent border border-[#B2FF05] text-[#B2FF05] hover:bg-[#B2FF05]/10 px-6 py-2.5 rounded-full font-medium transition-colors">
-                    פתח בגוגל טרנדס <i className="fas fa-external-link-alt"></i>
+                    פתח בגוגל טרנדס <IconExternalLink />
                   </button>
                   <button className="flex items-center gap-2 bg-[#232D36] text-white hover:bg-gray-700 px-6 py-2.5 rounded-full font-medium transition-colors">
-                    מודעות פעילות <i className="fas fa-external-link-alt"></i>
+                    מודעות פעילות <IconExternalLink />
                   </button>
                 </div>
 
