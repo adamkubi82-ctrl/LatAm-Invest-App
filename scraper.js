@@ -36,6 +36,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
   }
 }
 
+// שליפת כתבות חיות כולל קישור אמיתי לכל כתבה
 async function fetchLiveNews(query, geo) {
   try {
     const encodedQuery = encodeURIComponent(query);
@@ -43,16 +44,23 @@ async function fetchLiveNews(query, geo) {
     const res = await fetchWithTimeout(url, {}, 8000);
     const xml = await res.text();
     
-    const titles = [];
-    const regex = /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/g;
-    let match;
-    while ((match = regex.exec(xml)) !== null && titles.length < 15) {
-      const title = match[1] || match[2];
+    const articles = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let itemMatch;
+    
+    while ((itemMatch = itemRegex.exec(xml)) !== null && articles.length < 15) {
+      const itemXml = itemMatch[1];
+      const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
+      const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
+      
+      const title = titleMatch ? (titleMatch[1] || titleMatch[2]) : null;
+      const link = linkMatch ? linkMatch[1].trim() : null;
+      
       if (title && !title.includes("Google News")) {
-        titles.push(title);
+        articles.push({ title, link: link || '' });
       }
     }
-    return titles;
+    return articles;
   } catch (e) {
     return [];
   }
@@ -79,9 +87,8 @@ async function fetchGoogleTrends(geo) {
   }
 }
 
-// קריאה ל-Gemini עם ניסיונות חוזרים ומעבר בין מודלים במקרה של עומס
 async function callGeminiWithFallback(prompt) {
- const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+  const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
   
   for (const model of models) {
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -94,7 +101,7 @@ async function callGeminiWithFallback(prompt) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.2 }
+              generationConfig: { temperature: 0.1 }
             })
           },
           45000
@@ -120,38 +127,44 @@ async function callGeminiWithFallback(prompt) {
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר המרוכז (בקשה 1 לכל המדינות כדי לעקוף מגבלת 5 בקשות בדקה)...");
+  console.log("🚀 מפעיל את סוכן המחקר המאומת (מידע אמיתי בלבד)...");
   
-  // שלב 1: איסוף נתונים חיים לכל המדינות במקביל
   const countriesData = await Promise.all(
     TARGET_COUNTRIES.map(async (c) => {
-      const [news, trends] = await Promise.all([
+      const [articles, trends] = await Promise.all([
         fetchLiveNews(c.newsQuery, c.geo),
         fetchGoogleTrends(c.geo)
       ]);
-      console.log(`📰 ${c.name}: נאספו ${news.length} כתבות ו-${trends.length} טרנדים.`);
-      return { ...c, news, trends };
+      console.log(`📰 ${c.name}: נאספו ${articles.length} כתבות חיות ו-${trends.length} טרנדים.`);
+      return { ...c, articles, trends };
     })
   );
 
-  // פיצול ל-2 קבוצות (5 מדינות + 4 מדינות) = רק 2 בקשות API סה"כ!
   const batches = [countriesData.slice(0, 5), countriesData.slice(5)];
 
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const batchContext = batch.map(c => `
 === מדינה: ${c.name} ===
-חדשות אחרונות: ${c.news.join(' | ') || 'אין'}
-טרנדים חמים: ${c.trends.join(', ') || 'אין'}
+כתבות חדשות אחרונות (כותרת + קישור):
+${c.articles.map((a, idx) => `${idx + 1}. ${a.title} | URL: ${a.link}`).join('\n') || 'אין כתבות זמינות'}
+
+טרנדים חמים ב-Google Trends: ${c.trends.join(', ') || 'אין'}
 `).join('\n');
 
     const prompt = `
 אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית.
-לפניך נתוני חדשות וטרנדים חיים שנאספו עכשיו עבור ${batch.length} מדינות:
+לפניך כתבות חדשות אמיתיות ונתוני טרנדים שנאספו עכשיו עבור ${batch.length} מדינות:
 ${batchContext}
 
 המשימה שלך:
-עבור **כל אחת** מהמדינות שלמעלה, חלץ בדיוק **8 חברות** טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים אמיתיים ובולטים הפעילים באותה מדינה (סה"כ ${batch.length * 8} חברות). תן עדיפות לחברות שמופיעות בחדשות שלמעלה, והשלם עם חברות הטק/פינטק המובילות במדינה. אל תמציא שמות של חברות.
+עבור **כל אחת** מהמדינות שלמעלה, זהה וחלץ בדיוק **8 חברות** טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים אמיתיים ובולטים הפעילים באותה מדינה (סה"כ ${batch.length * 8} חברות).
+תן עדיפות ראשונה לחברות שמופיעות בכתבות החדשות שלמעלה, והשלם עם חברות הטכנולוגיה/פינטק המובילות והאמיתיות במדינה עד ל-8 חברות.
+
+כללי ברזל לאמינות (אפס המצאות):
+1. אל תמציא בשום אופן שמות של חברות.
+2. בשדות valuation (שווי) ו-raised (הון שגויס): כתוב מספר אך ורק אם מדובר בעובדה ציבורית ידועה ומאומתת (כמו שווי שוק של חברה בורסאית או סבב גיוס מפורסם של חד-קרן כמו Nubank, Rappi, Kavak, Ualá, Clip). אם אין נתון מאומת ודאי — כתוב בדיוק: "לא פורסם".
+3. בשדה source_url: אם החברה הופיעה באחת הכתבות שלמעלה, העתק את ה-URL המדויק של אותה כתבה. אם לא, השאר מחרוזת ריקה "".
 
 החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק:
 [
@@ -159,14 +172,19 @@ ${batchContext}
     "name": "שם החברה באנגלית (לדוגמה: Nubank)",
     "country": "שם המדינה בעברית בדיוק כפי שמופיע בכותרת למעלה",
     "industry": "סקטור בעברית (לדוגמה: פינטק, מסחר אלקטרוני, בנקאות דיגיטלית)",
+    "status": "פרטית או סימול בורסאי אמיתי (לדוגמה: NYSE: NU או פרטית)",
     "interest_level": "אחת מהאפשרויות בלבד: גבוה מאוד | גבוה | במגמת עלייה | בינוני",
-    "motivation": "אחת מהאפשרויות בלבד: כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית"
+    "motivation": "אחת מהאפשרויות בלבד: כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית",
+    "valuation": "שווי מאומת (לדוגמה: $45B) או 'לא פורסם'",
+    "raised": "הון שגויס מאומת (לדוגמה: $1.2B) או 'לא פורסם'",
+    "catalyst": "משפט קצר בעברית המסביר למה החברה בולטת או על מה דווח עליה בחדשות לאחרונה",
+    "source_url": "קישור לכתבת המקור או מחרוזת ריקה"
   }
 ]
 `;
 
     const companies = await callGeminiWithFallback(prompt);
-    console.log(`📦 קבוצה ${i + 1}: התקבלו ${companies.length} חברות מה-AI.`);
+    console.log(`📦 קבוצה ${i + 1}: התקבלו ${companies.length} חברות מאומתות מה-AI.`);
 
     for (const comp of companies) {
       if (!comp.name || !comp.country) continue;
@@ -174,8 +192,13 @@ ${batchContext}
         name: comp.name,
         country: comp.country,
         industry: comp.industry || 'טכנולוגיה ופינטק',
+        status: comp.status || 'פרטית',
         interest_level: comp.interest_level || 'גבוה',
-        motivation: comp.motivation || 'כסף ותשואה (קר)'
+        motivation: comp.motivation || 'כסף ותשואה (קר)',
+        valuation: comp.valuation || 'לא פורסם',
+        raised: comp.raised || 'לא פורסם',
+        catalyst: comp.catalyst || 'פעילות צומחת בשוק הטכנולוגיה המקומי',
+        source_url: comp.source_url || ''
       };
 
       const { data: existing } = await supabase
@@ -194,7 +217,7 @@ ${batchContext}
     }
 
     if (i < batches.length - 1) {
-      await new Promise(r => setTimeout(r, 10000));
+      await new Promise(r => setTimeout(r, 8000));
     }
   }
 
