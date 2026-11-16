@@ -5,20 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LatAm Invest Terminal | מחקר השקעות אמריקה הלטינית</title>
   
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React & ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  
-  <!-- Babel for JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
-  <!-- SheetJS for Multi-Tab Excel Export -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-
-  <!-- Google Fonts: Heebo -->
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
   <style>
@@ -29,20 +20,10 @@
       margin: 0;
       padding: 0;
     }
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0B0F14;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1E293B;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #334155;
-    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0B0F14; }
+    ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
   </style>
 </head>
 <body>
@@ -62,49 +43,44 @@
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     );
-
     const IconDownload = () => (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
     );
-
     const IconRefresh = () => (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
     );
-
     const IconSearch = () => (
       <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     );
-
     const IconActivity = () => (
       <svg className="w-4 h-4 text-[#B2FF05]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
       </svg>
     );
-
     const IconClose = () => (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
       </svg>
     );
 
-    // --- Constants ---
     const COUNTRIES = [
-      { id: 'הכל', label: 'כל המדינות', code: 'LATAM' },
-      { id: 'ברזיל', label: 'ברזיל', code: 'BR' },
-      { id: 'מקסיקו', label: 'מקסיקו', code: 'MX' },
-      { id: 'קולומביה', label: 'קולומביה', code: 'CO' },
-      { id: "צ'ילה", label: "צ'ילה", code: 'CL' },
-      { id: 'ארגנטינה', label: 'ארגנטינה', code: 'AR' },
-      { id: 'פרו', label: 'פרו', code: 'PE' },
-      { id: 'אורוגוואי', label: 'אורוגוואי', code: 'UY' },
-      { id: 'אקוודור', label: 'אקוודור', code: 'EC' },
-      { id: 'קוסטה ריקה', label: 'קוסטה ריקה', code: 'CR' }
+      { id: 'הכל', label: 'כל המדינות' },
+      { id: 'ברזיל', label: 'ברזיל' },
+      { id: 'מקסיקו', label: 'מקסיקו' },
+      { id: 'קולומביה', label: 'קולומביה' },
+      { id: "צ'ילה", label: "צ'ילה" },
+      { id: 'ארגנטינה', label: 'ארגנטינה' },
+      { id: 'פרו', label: 'פרו' },
+      { id: 'אורוגוואי', label: 'אורוגוואי' },
+      { id: 'אקוודור', label: 'אקוודור' },
+      { id: 'קוסטה ריקה', label: 'קוסטה ריקה' },
+      { id: 'אל סלבדור', label: 'אל סלבדור' }
     ];
 
     const STAGES = [
@@ -115,7 +91,6 @@
       { id: 'חזקות', label: 'חזקות', color: 'bg-teal-500' }
     ];
 
-    // --- Tooltip Component ---
     const Tooltip = ({ text, children, position = 'bottom' }) => {
       const positionClasses = position === 'top' 
         ? "bottom-full left-1/2 -translate-x-1/2 mb-2.5" 
@@ -141,16 +116,11 @@
 
     const getStageBadge = (stage) => {
       switch (stage) {
-        case 'לקראת הנפקה':
-          return 'bg-purple-500/15 text-purple-300 border-purple-500/30';
-        case 'טרנדיות':
-          return 'bg-lime-400/15 text-[#B2FF05] border-lime-400/30';
-        case 'מומנטום':
-          return 'bg-orange-500/15 text-orange-300 border-orange-500/30';
-        case 'חזקות':
-          return 'bg-teal-500/15 text-teal-300 border-teal-500/30';
-        default:
-          return 'bg-gray-500/15 text-gray-300 border-gray-500/30';
+        case 'לקראת הנפקה': return 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+        case 'טרנדיות': return 'bg-lime-400/15 text-[#B2FF05] border-lime-400/30';
+        case 'מומנטום': return 'bg-orange-500/15 text-orange-300 border-orange-500/30';
+        case 'חזקות': return 'bg-teal-500/15 text-teal-300 border-teal-500/30';
+        default: return 'bg-gray-500/15 text-gray-300 border-gray-500/30';
       }
     };
 
@@ -159,7 +129,25 @@
       return name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 2).toUpperCase() || 'CO';
     };
 
-    // --- Main App ---
+    const parseInterestScore = (level) => {
+      if (!level) return 65;
+      if (!isNaN(Number(level))) return Number(level);
+      if (level.includes('גבוה מאוד')) return 92;
+      if (level.includes('גבוה')) return 82;
+      if (level.includes('עלייה')) return 78;
+      if (level.includes('בינוני')) return 65;
+      return 55;
+    };
+
+    const deriveStage = (item) => {
+      if (item.stage) return item.stage;
+      const level = item.interest_level || '';
+      if (level.includes('גבוה מאוד')) return 'לקראת הנפקה';
+      if (level.includes('גבוה')) return 'טרנדיות';
+      if (level.includes('עלייה')) return 'מומנטום';
+      return 'חזקות';
+    };
+
     function App() {
       const [data, setData] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -173,7 +161,7 @@
         async function fetchData() {
           setLoading(true);
           try {
-            const response = await fetch(`${supabaseUrl}/rest/v1/latam_companies?select=*&order=interest_num.desc`, {
+            const response = await fetch(`${supabaseUrl}/rest/v1/latam_companies?select=*&order=id.desc`, {
               headers: {
                 'apikey': supabaseKey,
                 'Authorization': `Bearer ${supabaseKey}`
@@ -185,9 +173,10 @@
             
             if (fetched.length > 0) {
               const newest = fetched.reduce((acc, curr) => {
-                if (!curr.updated_at) return acc;
-                return new Date(curr.updated_at) > new Date(acc) ? curr.updated_at : acc;
-              }, fetched[0].updated_at || new Date().toISOString());
+                const dateVal = curr.updated_at || curr.created_at;
+                if (!dateVal) return acc;
+                return new Date(dateVal) > new Date(acc) ? dateVal : acc;
+              }, fetched[0].updated_at || fetched[0].created_at || new Date().toISOString());
               
               setLastUpdated(new Date(newest).toLocaleString('he-IL', {
                 day: '2-digit',
@@ -198,404 +187,12 @@
               }));
             }
 
-            const enrichedDB = fetched.map(item => ({
-              ...item,
-              interest_num: Number(item.interest_num) || 60,
-              driver_type: item.interest_num > 82 ? 'רגש ומומנטום מותג' : 'תשואה וערך פיננסי',
-              driver_desc: item.interest_num > 82 
-                ? 'שיח ער ברשתות החברתיות ואימוץ מהיר בקרב קהל צעיר (FOMO וחדשנות).' 
-                : 'העדפת משתמשים המבוססת על חיסכון בעמלות, יציבות פיננסית ופתרון בעיה עסקית.',
-              ad_angle: item.ad_angle || 'מיקוד בהנגשת שירותים פיננסיים דיגיטליים מהירים ללא בירוקרטיה.'
-            }));
-
-            setData(enrichedDB);
-          } catch (err) {
-            console.error("Fetch error:", err);
-          } finally {
-            setLoading(false);
-          }
-        }
-        fetchData();
-      }, []);
-
-      const filteredData = useMemo(() => {
-        return data.filter(item => {
-          const matchCountry = selectedCountry === 'הכל' || item.country === selectedCountry;
-          const matchStage = selectedStage === 'הכל' || item.stage === selectedStage;
-          const matchSearch = !searchQuery || 
-            item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.sector?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.country?.toLowerCase().includes(searchQuery.toLowerCase());
-          return matchCountry && matchStage && matchSearch;
-        });
-      }, [data, selectedCountry, selectedStage, searchQuery]);
-
-      const handleExportExcel = () => {
-        if (data.length === 0) {
-          alert('אין נתונים זמינים לייצוא כרגע.');
-          return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const countryList = COUNTRIES.filter(c => c.id !== 'הכל').map(c => c.id);
-
-        const allFormatted = data.map(row => ({
-          'חברה': row.name,
-          'מדינה': row.country,
-          'סקטור': row.sector,
-          'שלב': row.stage,
-          'סטטוס': row.status,
-          'ציון עניין (Google Trends)': row.interest_num,
-          'קליקים בחודש': row.clicks,
-          'הוצאה על מודעות': row.ad_spend,
-          'הון שגויס': row.raised,
-          'שווי מוערך': row.valuation,
-          'צמיחה שנתית': row.growth
-        }));
-        const wsAll = XLSX.utils.json_to_sheet(allFormatted);
-        XLSX.utils.book_append_sheet(wb, wsAll, 'כל המדינות');
-
-        countryList.forEach(countryName => {
-          const countryRows = data
-            .filter(item => item.country === countryName)
-            .map(row => ({
-              'חברה': row.name,
-              'סקטור': row.sector,
-              'שלב': row.stage,
-              'סטטוס': row.status,
-              'ציון עניין (Google Trends)': row.interest_num,
-              'קליקים בחודש': row.clicks,
-              'הוצאה על מודעות': row.ad_spend,
-              'הון שגויס': row.raised,
-              'שווי מוערך': row.valuation,
-              'צמיחה שנתית': row.growth
-            }));
-
-          if (countryRows.length > 0) {
-            const wsCountry = XLSX.utils.json_to_sheet(countryRows);
-            XLSX.utils.book_append_sheet(wb, wsCountry, countryName.substring(0, 30));
-          }
-        });
-
-        XLSX.writeFile(wb, `LatAm_Investment_Research_${new Date().toISOString().slice(0,10)}.xlsx`);
-      };
-
-      const stageTooltips = {
-        'טרנדיות': 'חברות שמייצרות המון רעש וחיפושים ברשת כרגע (Hype), לרוב בעקבות קמפיין חזק או כניסה לסקטור חם.',
-        'מומנטום': 'חברות שנמצאות במסלול צמיחה עקבי ומוכח בהכנסות ובגיוסי הון (תנופה עסקית אמיתית).',
-        'לקראת הנפקה': 'חברות בשלות הנמצאות בשלבי גיוס מתקדמים (Pre-IPO) ונערכות להנפקה בבורסה.',
-        'חזקות': 'חברות עוגן מבוססות ורווחיות עם נתח שוק משמעותי ויציבות פיננסית.'
-      };
-
-      return (
-        <div className="min-h-screen bg-[#0B0F14] text-gray-200 pb-16">
-          <header className="border-b border-[#1E2732] bg-[#0E131A]/90 backdrop-blur-md sticky top-0 z-40">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-[#B2FF05] shadow-[0_0_12px_#B2FF05]"></div>
-                  <h1 className="text-xl font-black tracking-tight text-white">
-                    LATAM <span className="text-[#B2FF05]">INVEST</span> TERMINAL
-                  </h1>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  מנוע מחקר ומודיעין עסקי לשווקים מתעוררים באמריקה הלטינית
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl px-3.5 py-2 flex items-center gap-3 text-xs">
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    סריקה אוטומטית: כל יום שני 08:00
-                  </div>
-                  <span className="text-gray-600">|</span>
-                  <div className="text-gray-400">
-                    עודכן לאחרונה: <span className="text-gray-200 font-medium">{lastUpdated || 'טוען...'}</span>
-                  </div>
-                </div>
-
-                <a 
-                  href={githubRepoUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 transition-all"
-                  title="פתיחת חדר הבקרה להפעלת סריקת AI מיידית"
-                >
-                  <IconRefresh />
-                  בדיקה יזומה עכשיו
-                </a>
-
-                <button 
-                  onClick={handleExportExcel}
-                  className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(178,255,5,0.2)]"
-                >
-                  <IconDownload />
-                  ייצוא כל הנתונים (Excel)
-                </button>
-              </div>
-            </div>
-          </header>
-
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {COUNTRIES.map(country => {
-                const count = country.id === 'הכל' 
-                  ? data.length 
-                  : data.filter(d => d.country === country.id).length;
-                
-                return (
-                  <button
-                    key={country.id}
-                    onClick={() => setSelectedCountry(country.id)}
-                    className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-2 border ${
-                      selectedCountry === country.id
-                        ? 'bg-[#B2FF05] text-[#0B0F14] border-[#B2FF05] font-bold shadow-[0_0_15px_rgba(178,255,5,0.2)]'
-                        : 'bg-[#131A22] text-gray-400 border-[#232D36] hover:border-gray-600 hover:text-gray-200'
-                    }`}
-                  >
-                    <span>{country.label}</span>
-                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
-                      selectedCountry === country.id ? 'bg-black/20 text-black' : 'bg-[#1C2530] text-gray-400'
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#11171F] p-4 rounded-2xl border border-[#1E2732]">
-              <div className="flex flex-wrap items-center gap-2">
-                {STAGES.map(stage => {
-                  const btn = (
-                    <button
-                      key={stage.id}
-                      onClick={() => setSelectedStage(stage.id)}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 border ${
-                        selectedStage === stage.id
-                          ? 'bg-[#1A232E] text-white border-[#B2FF05]/50 shadow-[0_0_10px_rgba(178,255,5,0.1)]'
-                          : 'bg-[#131A22] text-gray-400 border-[#232D36] hover:border-gray-600'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${stage.color}`}></span>
-                      {stage.label}
-                    </button>
-                  );
-
-                  return stageTooltips[stage.id] ? (
-                    <Tooltip key={stage.id} text={stageTooltips[stage.id]} position="bottom">
-                      {btn}
-                    </Tooltip>
-                  ) : btn;
-                })}
-              </div>
-
-              <div className="relative w-full md:w-72">
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                  <IconSearch />
-                </div>
-                <input
-                  type="text"
-                  placeholder="חיפוש חברה, סקטור או מדינה..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0B0F14] border border-[#232D36] focus:border-[#B2FF05] rounded-xl py-2 pr-10 pl-4 text-xs text-white placeholder-gray-500 focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-visible shadow-xl">
-              <div className="overflow-x-auto overflow-y-visible">
-                <table className="w-full text-right border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1E2732] text-gray-400 text-xs bg-[#141B24]">
-                      <th className="py-4 px-6 font-medium">חברה</th>
-                      <th className="py-4 px-6 font-medium">מדינה</th>
-                      <th className="py-4 px-6 font-medium">סקטור</th>
-                      <th className="py-4 px-6 font-medium text-center">
-                        <Tooltip text="סיווג החברה: טרנדיות (רעש וחיפושים ברשת) מול מומנטום (צמיחה עסקית וגיוסים מוכחים), לקראת הנפקה או חברות עוגן חזקות." position="bottom">
-                          שלב
-                        </Tooltip>
-                      </th>
-                      <th className="py-4 px-6 font-medium">
-                        <Tooltip text="מבוסס על נתוני נפח חיפוש יחסי ב-Google Trends (ציון 0-100) לאורך 30 הימים האחרונים במדינת היעד." position="bottom">
-                          עניין ↓
-                        </Tooltip>
-                      </th>
-                      <th className="py-4 px-6 font-medium">קליקים/חודש</th>
-                      <th className="py-4 px-6 font-medium">מודעות/חודש</th>
-                      <th className="py-4 px-6 font-medium">הון שגויס</th>
-                      <th className="py-4 px-6 font-medium">שווי מוערך</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#1E2732]/60 text-sm">
-                    {loading ? (
-                      <tr>
-                        <td colSpan="9" className="py-16 text-center text-gray-500">
-                          טוען נתונים חיים ממסד הנתונים...
-                        </td>
-                      </tr>
-                    ) : filteredData.length === 0 ? (
-                      <tr>
-                        <td colSpan="9" className="py-16 text-center text-gray-500">
-                          לא נמצאו חברות התואמות לסינון הנוכחי.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredData.map((company, idx) => (
-                        <tr 
-                          key={company.id || idx}
-                          onClick={() => setSelectedCompany(company)}
-                          className="hover:bg-[#17202B] transition-colors cursor-pointer group"
-                        >
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-[#1A232E] border border-[#2A3644] flex items-center justify-center font-bold text-xs text-gray-300 group-hover:border-[#B2FF05]/50 group-hover:text-[#B2FF05] transition-colors">
-                                {getInitials(company.name)}
-                              </div>
-                              <div>
-                                <div className="font-bold text-white group-hover:text-[#B2FF05] transition-colors">
-                                  {company.name}
-                                </div>
-                                <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-emerald-400">↗</span>
-                                  <span>{company.status || 'פרטית'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-gray-300 text-xs">{company.country}</td>
-                          <td className="py-4 px-6 text-gray-400 text-xs">{company.sector}</td>
-                          <td className="py-4 px-6 text-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(company.stage)}`}>
-                              {company.stage}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold text-white w-6">{company.interest_num}</span>
-                              <div className="w-16 h-1.5 bg-[#1E2732] rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-[#B2FF05] rounded-full" 
-                                  style={{ width: `${Math.min(100, company.interest_num)}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-6 text-gray-300 font-mono text-xs">{company.clicks || '-'}</td>
-                          <td className="py-4 px-6 text-gray-300 font-mono text-xs">{company.ad_spend || '-'}</td>
-                          <td className="py-4 px-6 text-gray-300 font-mono text-xs">{company.raised || '-'}</td>
-                          <td className="py-4 px-6 font-bold text-white font-mono text-xs">{company.valuation || '-'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </main>
-
-          {selectedCompany && (
-            <div 
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={() => setSelectedCompany(null)}
-            >
-              <div 
-                className="bg-[#0F151D] border border-[#232D36] rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl relative"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="flex items-start justify-between border-b border-[#1E2732] pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#1A232E] border border-[#B2FF05]/40 flex items-center justify-center font-black text-base text-[#B2FF05]">
-                      {getInitials(selectedCompany.name)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-black text-white">{selectedCompany.name}</h2>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStageBadge(selectedCompany.stage)}`}>
-                          {selectedCompany.stage}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {selectedCompany.country} • {selectedCompany.sector} • {selectedCompany.status}
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedCompany(null)}
-                    className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-[#161E27] transition-colors"
-                  >
-                    <IconClose />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">שווי מוערך</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.valuation || '-'}</div>
-                  </div>
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">הון שגויס</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.raised || '-'}</div>
-                  </div>
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">צמיחה שנתית</div>
-                    <div className="text-base font-bold text-emerald-400 mt-1 font-mono">{selectedCompany.growth || '+35%'}</div>
-                  </div>
-                  <div className="bg-[#131A22] border border-[#232D36] p-3.5 rounded-xl">
-                    <div className="text-xs text-gray-500">הוצאת פרסום/חודש</div>
-                    <div className="text-base font-bold text-white mt-1 font-mono">{selectedCompany.ad_spend || '-'}</div>
-                  </div>
-                </div>
-
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5 flex flex-col items-center">
-                  <div className="text-xs text-gray-500 mb-3">מדד עניין וחיפושים</div>
-                  <div className="flex items-center gap-4 w-full max-w-md justify-center">
-                    <Tooltip text="מבוסס על נפח חיפוש יחסי ב-Google Trends (0-100) ב-30 הימים האחרונים" position="top">
-                      <span className="text-sm text-gray-300 font-medium">עניין</span>
-                    </Tooltip>
-                    <span className="text-white font-bold">{selectedCompany.interest_num}</span>
-                    <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#B2FF05] rounded-full" 
-                        style={{ width: `${Math.min(100, selectedCompany.interest_num)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-5">
-                  <h3 className="text-sm font-bold text-gray-300 flex items-center gap-2 mb-2">
-                    <IconActivity />
-                    <Tooltip text="מבוסס על ניתוח סנטימנט ושיח ברשת - האם קהל היעד מונע מחיבור רגשי (מותג, קהילה, טרנד) או משיקולים פיננסיים טהורים (תשואה, חיסכון בעמלות)." position="top">
-                      המניע (רגש מול כסף)
-                    </Tooltip>
-                  </h3>
-                  <div className="text-xs text-[#B2FF05] font-medium mb-1">{selectedCompany.driver_type}</div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    {selectedCompany.driver_desc}
-                  </p>
-                </div>
-
-                <div className="bg-[#131A22] border border-[#232D36] rounded-xl p-4 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs text-gray-500">זווית שיווקית מרכזית</div>
-                    <div className="text-xs text-gray-300 mt-1">{selectedCompany.ad_angle}</div>
-                  </div>
-                  <div className="text-left font-mono text-xs text-gray-400">
-                    {selectedCompany.clicks} קליקים/חודש
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
-</body>
-</html>
+            const enrichedDB = fetched.map(item => {
+              const score = parseInterestScore(item.interest_level);
+              const computedStage = deriveStage(item);
+              return {
+                ...item,
+                sector: item.industry || item.sector || 'פינטק וטכנולוגיה',
+                stage: computedStage,
+                interest_num: score,
+                driver_type: item.motivation ||
