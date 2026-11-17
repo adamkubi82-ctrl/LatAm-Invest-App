@@ -12,15 +12,15 @@ if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const TARGET_COUNTRIES = [
-  { name: "מקסיקו", geo: "MX", newsQuery: "startup OR fintech OR inversión México empresa tecnología" },
-  { name: "קולומביה", geo: "CO", newsQuery: "startup OR fintech OR inversión Colombia empresa tecnología" },
-  { name: "צ'ילה", geo: "CL", newsQuery: "startup OR fintech OR inversión Chile empresa tecnología" },
-  { name: "ארגנטינה", geo: "AR", newsQuery: "startup OR fintech OR unicornio Argentina inversión" },
-  { name: "פרו", geo: "PE", newsQuery: "startup OR fintech OR inversión Perú empresa tecnología" },
-  { name: "אורוגוואי", geo: "UY", newsQuery: "startup OR fintech OR tecnología Uruguay inversión" },
-  { name: "אקוודור", geo: "EC", newsQuery: "startup OR fintech OR tecnología Ecuador inversión" },
-  { name: "קוסטה ריקה", geo: "CR", newsQuery: "startup OR fintech OR tecnología Costa Rica inversión" },
-  { name: "אל סלבדור", geo: "SV", newsQuery: "startup OR fintech OR tecnología El Salvador inversión bitcoin" }
+  { name: "מקסיקו", geo: "MX", newsQuery: "empresa tecnología OR fintech OR bolsa México" },
+  { name: "קולומביה", geo: "CO", newsQuery: "empresa tecnología OR fintech OR bolsa Colombia" },
+  { name: "צ'ילה", geo: "CL", newsQuery: "empresa tecnología OR fintech OR bolsa Chile" },
+  { name: "ארגנטינה", geo: "AR", newsQuery: "empresa tecnología OR fintech OR unicornio Argentina" },
+  { name: "פרו", geo: "PE", newsQuery: "empresa tecnología OR fintech OR inversión Perú" },
+  { name: "אורוגוואי", geo: "UY", newsQuery: "empresa tecnología OR fintech Uruguay inversión" },
+  { name: "אקוודור", geo: "EC", newsQuery: "empresa tecnología OR fintech Ecuador inversión" },
+  { name: "קוסטה ריקה", geo: "CR", newsQuery: "empresa tecnología OR fintech Costa Rica inversión" },
+  { name: "אל סלבדור", geo: "SV", newsQuery: "empresa tecnología OR fintech El Salvador inversión" }
 ];
 
 async function fetchLiveNews(query, geo) {
@@ -57,8 +57,13 @@ async function queryGeminiCountry(c, articles) {
 
   const prompt = `
 אתה אנליסט השקעות באמריקה הלטינית (השנה היא 2026).
-השתמש בחיפוש גוגל חי (Google Search) כדי לאמת נתונים עבור 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני או סטארט-אפים **פעילים בלבד** ב${c.name}.
-תן עדיפות לחברות שנוסדו ב${c.name}, והשלם בחברות לטינו-אמריקאיות הפעילות בה משמעותית.
+השתמש בחיפוש גוגל חי (Google Search) כדי לאמת נתונים עבור **8 חברות** טכנולוגיה, פינטק, בנקאות דיגיטלית, מסחר אלקטרוני או חדשנות **פעילות בלבד** ב${c.name}.
+
+**חובת גיוון הרכב החברות (קריטי!):**
+חלק את 8 החברות ב${c.name} כך:
+- **2 עד 3 חברות בורסאיות / ציבוריות (נסחרות או אחרי הנפקה)** הפעילות משמעותית ב${c.name} (כמו MercadoLibre, Globant, dLocal, Bancolombia, Banco de Chile, Falabella, Copa Holdings, Grupo Aval, Nu Holdings וכו' — כל אחת רלוונטית למדינה זו).
+- **3 חברות פרטיות בצמיחה מוכחת (מומנטום)** עם סבבי גיוס מאומתים.
+- **2 עד 3 חברות פרטיות טרנדיות / חדשניות** שמופיעות בחדשות.
 
 חדשות אחרונות ב${c.name}:
 ${context}
@@ -67,11 +72,13 @@ ${context}
 1. אסור לכלול חברות שנסגרו או הפסיקו פעילות (כמו Frubana).
 2. אסור לכלול תאגידים אמריקאיים/גלובליים (Amazon, Google, Uber, Meta, Apple, Microsoft).
 3. בשדה status:
-   - פרטית שנוסדה ב${c.name}: "פרטית • מקור מקומי (לא נסחרת)"
-   - פרטית ממדינה אחרת: "פרטית • מקור: [שם מדינת המקור] (לא נסחרת)"
-   - נסחרת בבורסה: סימול מדויק (לדוגמה "NYSE: GLOB" או "NASDAQ: DLO")
+   - נסחרת בבורסה: כתוב סימול בורסאי מדויק (לדוגמה: "NASDAQ: MELI", "NYSE: GLOB", "NYSE: CIB", "BCS: FALABELLA").
+   - הונפקה ב-3 השנים האחרונות: "אחרי הנפקה (סימול)".
+   - פרטית שנוסדה ב${c.name}: "פרטית • מקור מקומי (לא נסחרת)".
+   - פרטית ממדינה אחרת בלטינו-אמריקה: "פרטית • מקור: [מדינת המקור] (לא נסחרת)".
    - "לקראת הנפקה" רק אם הוגש תשקיף או הוכרז IPO רשמית.
-4. בשדות valuation ו-raised: אמת בחיפוש גוגל והצמד שנה וסוג (לדוגמה "$85M (סבב B, 2025)" או "$71M קו אשראי (2025)"). כתוב "לא פורסם" רק אם באמת לא פורסם.
+4. בשדה interest_level: גוון בין "גבוה מאוד", "גבוה", "במגמת עלייה", ו-"בינוני" בהתאם למציאות (אל תיתן לכולן "גבוה מאוד").
+5. בשדות valuation ו-raised: אמת בחיפוש גוגל והצמד שנה (לדוגמה: "$85M (סבב B, 2025)" או שווי שוק לחברה בורסאית כמו "$95B (שווי שוק, 2026)").
 
 החזר מערך JSON בלבד (ללא טקסט נוסף):
 [
@@ -92,7 +99,7 @@ ${context}
 ]
 `;
 
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+  const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
 
   for (const model of models) {
     try {
@@ -122,6 +129,7 @@ ${context}
     } catch (err) {
       console.warn(`⚠️ [${c.name}] שגיאת רשת מול ${model}: ${err.message}`);
     }
+    await new Promise(r => setTimeout(r, 8000));
   }
   return [];
 }
@@ -134,7 +142,7 @@ async function processCountry(c) {
 
   if (existingCount >= 8) {
     console.log(`✅ ${c.name}: כבר מלא (${existingCount} חברות) — מדלג.`);
-    return;
+    return false;
   }
 
   console.log(`🔍 מתחיל מחקר עבור ${c.name}...`);
@@ -174,14 +182,18 @@ async function processCountry(c) {
       await supabase.from('latam_companies').insert([item]);
     }
   }
+  return true;
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל סריקה מהירה במקביל (3 מדינות בו-זמנית)...");
+  console.log("🚀 מפעיל סריקה מאוזנת (2 מדינות במקביל)...");
   
-  for (let i = 0; i < TARGET_COUNTRIES.length; i += 3) {
-    const chunk = TARGET_COUNTRIES.slice(i, i + 3);
-    await Promise.all(chunk.map(c => processCountry(c)));
+  for (let i = 0; i < TARGET_COUNTRIES.length; i += 2) {
+    const chunk = TARGET_COUNTRIES.slice(i, i + 2);
+    const results = await Promise.all(chunk.map(c => processCountry(c)));
+    if (results.some(ran => ran === true) && i + 2 < TARGET_COUNTRIES.length) {
+      await new Promise(r => setTimeout(r, 12000));
+    }
   }
 
   console.log("🎉 הסריקה הושלמה בהצלחה!");
