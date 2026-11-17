@@ -291,7 +291,6 @@
         });
       }, [data, selectedCountry, selectedStage]);
 
-      // יוצר בכל לחיצה מהדורה חדשה ונעולה עם חותמת זמן ייחודית (לעולם לא דורס קישורים קודמים!)
       const handleCreateNewFrozenLink = async () => {
         setIsCreatingSnapshot(true);
         const now = new Date();
@@ -300,27 +299,36 @@
         const uniqueEditionSlug = `${dateStr}_${uniqueSuffix}`;
 
         try {
-          await fetch(`${supabaseUrl}/rest/v1/latam_editions`, {
+          const res = await fetch(`${supabaseUrl}/rest/v1/latam_editions`, {
             method: 'POST',
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
             },
             body: JSON.stringify({
               edition_id: uniqueEditionSlug,
               snapshot_data: data
             })
           });
-        } catch (e) {
-          console.error("Snapshot save error:", e);
-        } finally {
-          setIsCreatingSnapshot(false);
+
+          if (!res.ok) {
+            const errText = await res.text();
+            alert(`שגיאה בשמירת המהדורה ב-Supabase (${res.status}): ודא שטבלת latam_editions קיימת ושה-RLS כבוי עליה.\nפרטים: ${errText}`);
+            setIsCreatingSnapshot(false);
+            return;
+          }
+
           const baseUrl = window.location.origin + window.location.pathname;
           const shareUrl = `${baseUrl}?edition=${uniqueEditionSlug}`;
-          navigator.clipboard.writeText(shareUrl);
+          await navigator.clipboard.writeText(shareUrl);
           setCopied(true);
           setTimeout(() => setCopied(false), 3500);
+        } catch (e) {
+          alert(`שגיאת תקשורת ביצירת הקישור: ${e.message}`);
+        } finally {
+          setIsCreatingSnapshot(false);
         }
       };
 
@@ -440,8 +448,8 @@
                         </Tooltip>
                       </th>
                       <th className="py-4 px-3 font-medium whitespace-nowrap">
-                        <Tooltip text="ציון יחסי (0-100) המבוסס על היקף הסיקור החדשותי ב-30 הימים האחרונים במדינת היעד." position="bottom">
-                          בולטות ↓
+                        <Tooltip text="מדד עניין יחסי (0-100) המשקלל מגמות חיפוש ב-Google Trends והיקף סיקור תקשורתי ב-30 הימים האחרונים במדינת היעד." position="bottom">
+                          עניין ומומנטום ↓
                         </Tooltip>
                       </th>
                       <th className="py-4 px-3 font-medium min-w-[110px]">המניע המרכזי</th>
@@ -610,9 +618,9 @@
                 </div>
 
                 <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4">
-                  <div className="text-xs text-gray-400 mb-2">מדדים (הערכת סיקור 30 יום)</div>
+                  <div className="text-xs text-gray-400 mb-2">מדדים (Google Trends וסיקור 30 יום)</div>
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-300 font-medium">בולטות תקשורתית</span>
+                    <span className="text-xs text-gray-300 font-medium">עניין ומומנטום</span>
                     <span className="text-sm font-bold text-white">{selectedCompany.interest_num}</span>
                     <div className="flex-1 h-2 bg-[#1E2732] rounded-full overflow-hidden">
                       <div 
