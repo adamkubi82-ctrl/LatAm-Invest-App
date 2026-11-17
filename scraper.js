@@ -23,7 +23,7 @@ const TARGET_COUNTRIES = [
   { name: "אל סלבדור", geo: "SV", newsQuery: "startup OR fintech OR tecnología El Salvador inversión bitcoin" }
 ];
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -86,46 +86,51 @@ async function fetchGoogleTrends(geo) {
   }
 }
 
-async function callGeminiStrictJSON(prompt) {
-  const model = "gemini-3.5-flash-lite";
+// קריאה ל-Gemini עם חיפוש חי בגוגל (Google Search Grounding) לאימות נתונים בזמן אמת
+async function callGeminiWithLiveSearch(prompt) {
+  const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
   
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    try {
-      console.log(`🤖 שולח בקשה ל-${model} (ניסיון ${attempt})...`);
-      const response = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { 
-              temperature: 0.1,
-              responseMimeType: "application/json"
-            }
-          })
-        },
-        60000
-      );
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`🌐 מריץ מחקר + חיפוש חי בגוגל באמצעות ${model} (ניסיון ${attempt})...`);
+        const response = await fetchWithTimeout(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              tools: [{ google_search: {} }],
+              generationConfig: { 
+                temperature: 0.1
+              }
+            })
+          },
+          90000
+        );
 
-      const data = await response.json();
-      if (!data.error) {
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-        const parsed = JSON.parse(rawText);
-        if (Array.isArray(parsed)) return parsed;
-      } else {
-        console.warn(`⚠️ ${model} החזיר: ${data.error.message}`);
+        const data = await response.json();
+        if (!data.error) {
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+          }
+        } else {
+          console.warn(`⚠️ ${model} החזיר: ${data.error.message}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ שגיאת תקשורת מול ${model}: ${err.message}`);
       }
-    } catch (err) {
-      console.warn(`⚠️ שגיאת תקשורת מול ${model}: ${err.message}`);
+      await new Promise(r => setTimeout(r, 5000));
     }
-    await new Promise(r => setTimeout(r, 12000));
   }
   return [];
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר המאומת (אימות סטטוס מסחר והנפקה)...");
+  console.log("🚀 מפעיל את סוכן המחקר המאומת עם חיפוש חי בגוגל (Google Search Grounding)...");
   
   const countriesData = await Promise.all(
     TARGET_COUNTRIES.map(async (c) => {
@@ -138,69 +143,70 @@ async function runAgent() {
     })
   );
 
-  const batches = [
-    countriesData.slice(0, 3),
-    countriesData.slice(3, 6),
-    countriesData.slice(6, 9)
-  ];
-
-  for (let i = 0; i < batches.length; i++) {
-    const batch = batches[i];
-    const batchContext = batch.map(c => `
+  // מעבדים מדינה-מדינה (או בזוגות) כדי שחיפוש הגוגל החי יאמת כל חברה לעומק
+  for (let i = 0; i < countriesData.length; i++) {
+    const c = countriesData[i];
+    const context = `
 === מדינה: ${c.name} ===
-כתבות חדשות אחרונות:
+כתבות חדשות אחרונות שנאספו:
 ${c.articles.map((a, idx) => `${idx + 1}. ${a.title} | URL: ${a.link}`).join('\n') || 'אין כתבות זמינות'}
 טרנדים חמים: ${c.trends.join(', ') || 'אין'}
-`).join('\n');
+`;
 
     const prompt = `
-אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית.
-לפניך כתבות חדשות אמיתיות וטרנדים עבור ${batch.length} מדינות:
-${batchContext}
+אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית (השנה היא 2026).
+לרשותך גישה לחיפוש חי בגוגל (Google Search). עליך להשתמש בחיפוש החי כדי לאמת כל נתון לפני שאתה מחזיר אותו!
+
+נתוני הרקע שנאספו עבור ${c.name}:
+${context}
 
 המשימה שלך:
-עבור **כל אחת** מהמדינות שלמעלה, חלץ בדיוק **8 חברות** טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים **מקומיים/אזוריים** בולטים הפעילים במדינה (סה"כ ${batch.length * 8} חברות).
-תן עדיפות לחברות מהחדשות שלמעלה, והשלם עם חברות הטכנולוגיה/פינטק המובילות והאמיתיות במדינה עד ל-8 חברות.
+זהה ואמת בדיוק **8 חברות** טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים **פעילים בלבד** ב${c.name}.
+תן עדיפות ראשונה לחברות שנוסדו ב${c.name}, והשלם עם חברות טק/פינטק לטינו-אמריקאיות הפעילות בה משמעותית.
 
-כללי ברזל לאמינות (אפס המצאות):
-1. איסור מוחלט על תאגידים אמריקאיים/גלובליים (כמו Amazon, Google, Apple, Microsoft, Meta, Uber) — כלול אך ורק חברות לטינו-אמריקאיות מקומיות או אזוריות!
-2. אל תמציא שמות של חברות.
-3. בשדות valuation (שווי) ו-raised (הון שגויס): כתוב מספר מדווח אך ורק אם מדובר בעובדה ציבורית ידועה. אם אין נתון מאומת ודאי — כתוב בדיוק: "לא פורסם".
-4. בשדה status (סטטוס מסחר והנפקה — קריטי!):
-   - אם החברה נסחרת בבורסה ותיקה: כתוב את הסימול המדויק (לדוגמה: "NYSE: GLOB" או "BMV: AMX").
-   - אם החברה הונפקה בבורסה ב-3 השנים האחרונות: כתוב "אחרי הנפקה" בצירוף הסימול (לדוגמה: "אחרי הנפקה (NASDAQ: DLO)").
-   - כתוב "לקראת הנפקה" **אך ורק** אם קיים דיווח חדשותי רשמי ופומבי שהחברה הגישה תשקיף (S-1 / F-1) או הודיעה רשמית על כוונת הנפקה קרובה! אל תנחש "לקראת הנפקה" סתם כי החברה גדולה.
-   - לכל שאר החברות הפרטיות שאין להן מניות סחירות ולא הכריזו על הנפקה: כתוב בדיוק "פרטית (לא נסחרת)".
+חובת אימות בחיפוש גוגל חי (Google Search):
+1. **בדוק בגוגל שהחברה עדיין פעילה ב-2026!** אם חברה נסגרה, פשטה רגל או הפסיקה פעילות ב${c.name} (כמו Frubana שנסגרה) — פסול אותה מיד ובחר חברה פעילה אחרת.
+2. **איסור מוחלט על תאגידים אמריקאיים/גלובליים** (כמו Amazon, Google, Apple, Microsoft, Meta, Uber).
+3. **אמת בחיפוש את מדינת המקור וסטטוס המסחר עבור שדה status:**
+   - אם נוסדה ב${c.name} והיא פרטית: "פרטית • מקור מקומי (לא נסחרת)".
+   - אם נוסדה במדינה אחרת ופועלת ב${c.name}: "פרטית • מקור: [שם מדינת המקור] (לא נסחרת)".
+   - אם נסחרת בבורסה: ציין סימול מדויק (לדוגמה: "NYSE: GLOB" או "NASDAQ: DLO").
+   - כתוב "לקראת הנפקה" **אך ורק** אם מצאת בחיפוש דיווח רשמי ופומבי על הגשת תשקיף (S-1 / F-1) או כוונת IPO קרובה.
+4. **אמת בחיפוש את סבב הגיוס האחרון והשווי המדווח:**
+   - חפש בגוגל "[שם החברה] funding round valuation" והבא את הנתון העדכני והמדויק ביותר כולל **שנה וסוג** (לדוגמה: "$85M (סבב B, 2025)", "$160M (מצטבר, 2026)", "$5.25B (2021)", או "$71M קו אשראי (2025)").
+   - כתוב "לא פורסם" רק אם באמת לא פורסם נתון פומבי.
 
-החזר מערך JSON במבנה הבא בדיוק:
+החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק:
 [
   {
     "name": "שם החברה באנגלית",
-    "country": "שם המדינה בעברית בדיוק כפי שמופיע בכותרת למעלה",
+    "country": "${c.name}",
     "industry": "סקטור בעברית",
-    "status": "סימול בורסאי | אחרי הנפקה | לקראת הנפקה | פרטית (לא נסחרת)",
+    "status": "סטטוס מאומת כולל מדינת מקור",
     "interest_level": "גבוה מאוד | גבוה | במגמת עלייה | בינוני",
     "motivation": "כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית",
-    "valuation": "שווי מאומת או 'לא פורסם'",
-    "raised": "הון שגויס מאומת או 'לא פורסם'",
+    "valuation": "שווי מאומת כולל שנה או 'לא פורסם'",
+    "raised": "הון שגויס מאומת כולל שנה וסוג או 'לא פורסם'",
     "description": "2 משפטים ברורים בעברית: מה החברה עושה ומה המוצר המרכזי שלה.",
     "investment_thesis": "2 משפטים אנליטיים בעברית: למה שווה לעקוב או להשקיע בחברה הזו.",
-    "catalyst": "משפט קצר בעברית: מה מדווחים עליה בחדשות לאחרונה.",
+    "catalyst": "משפט קצר בעברית: מה מדווחים עליה בחדשות לאחרונה (כולל ציון שנה).",
     "source_url": "קישור לכתבת המקור או מחרוזת ריקה"
   }
 ]
 `;
 
-    const companies = await callGeminiStrictJSON(prompt);
-    console.log(`📦 קבוצה ${i + 1}: התקבלו ${companies.length} חברות מאומתות מה-AI.`);
+    const companies = await callGeminiWithLiveSearch(prompt);
+    console.log(`📦 ${c.name}: התקבלו ${companies.length} חברות מאומתות מחיפוש חי.`);
 
     for (const comp of companies) {
-      if (!comp.name || !comp.country) continue;
+      if (!comp.name) continue;
+      if (comp.name.toLowerCase().includes('frubana')) continue;
+
       const item = {
         name: comp.name,
-        country: comp.country,
+        country: c.name,
         industry: comp.industry || 'פינטק וטכנולוגיה',
-        status: comp.status || 'פרטית (לא נסחרת)',
+        status: comp.status || 'פרטית • מקור מקומי (לא נסחרת)',
         interest_level: comp.interest_level || 'גבוה',
         motivation: comp.motivation || 'כסף ותשואה (קר)',
         valuation: comp.valuation || 'לא פורסם',
@@ -226,12 +232,10 @@ ${batchContext}
       }
     }
 
-    if (i < batches.length - 1) {
-      await new Promise(r => setTimeout(r, 8000));
-    }
+    await new Promise(r => setTimeout(r, 2000));
   }
 
-  console.log("🎉 הסריקה הושלמה בהצלחה!");
+  console.log("🎉 הסריקה המאומתת הושלמה בהצלחה!");
   process.exit(0);
 }
 
