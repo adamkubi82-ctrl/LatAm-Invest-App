@@ -92,7 +92,6 @@ ${context}
 ]
 `;
 
-  // שימוש במודלים היציבים ביותר ללא ניתוקי Timeout מלאכותיים
   const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 
   for (const model of models) {
@@ -177,4 +176,16 @@ async function processCountry(c) {
   }
 }
 
-async function
+async function runAgent() {
+  console.log("🚀 מפעיל סריקה מהירה במקביל (3 מדינות בו-זמנית)...");
+  
+  for (let i = 0; i < TARGET_COUNTRIES.length; i += 3) {
+    const chunk = TARGET_COUNTRIES.slice(i, i + 3);
+    await Promise.all(chunk.map(c => processCountry(c)));
+  }
+
+  console.log("🎉 הסריקה הושלמה בהצלחה!");
+  process.exit(0);
+}
+
+runAgent();
