@@ -23,31 +23,18 @@ const TARGET_COUNTRIES = [
   { name: "אל סלבדור", geo: "SV", newsQuery: "startup OR fintech OR tecnología El Salvador inversión bitcoin" }
 ];
 
-async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (err) {
-    clearTimeout(id);
-    throw err;
-  }
-}
-
 async function fetchLiveNews(query, geo) {
   try {
     const encodedQuery = encodeURIComponent(query);
     const url = `https://news.google.com/rss/search?q=${encodedQuery}+when:30d&hl=es-419&gl=${geo}&ceid=${geo}:es-419`;
-    const res = await fetchWithTimeout(url, {}, 8000);
+    const res = await fetch(url);
     const xml = await res.text();
     
     const articles = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/g;
     let itemMatch;
     
-    while ((itemMatch = itemRegex.exec(xml)) !== null && articles.length < 12) {
+    while ((itemMatch = itemRegex.exec(xml)) !== null && articles.length < 10) {
       const itemXml = itemMatch[1];
       const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/);
       const linkMatch = itemXml.match(/<link>(.*?)<\/link>/);
@@ -65,178 +52,129 @@ async function fetchLiveNews(query, geo) {
   }
 }
 
-async function fetchGoogleTrends(geo) {
-  try {
-    const url = `https://trends.google.com/trending/rss?geo=${geo}`;
-    const res = await fetchWithTimeout(url, {}, 6000);
-    const xml = await res.text();
-    
-    const trends = [];
-    const regex = /<title>(.*?)<\/title>/g;
-    let match;
-    while ((match = regex.exec(xml)) !== null && trends.length < 8) {
-      const term = match[1];
-      if (term && !term.includes("Daily Search Trends")) {
-        trends.push(term);
-      }
-    }
-    return trends;
-  } catch (e) {
-    return [];
-  }
-}
+async function queryGeminiCountry(c, articles) {
+  const context = articles.map((a, idx) => `${idx + 1}. ${a.title} | URL: ${a.link}`).join('\n') || 'אין כתבות זמינות';
 
-// קריאה ל-Gemini עם חיפוש חי בגוגל (Google Search Grounding) לאימות נתונים בזמן אמת
-async function callGeminiWithLiveSearch(prompt) {
-  const models = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
-  
-  for (const model of models) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        console.log(`🌐 מריץ מחקר + חיפוש חי בגוגל באמצעות ${model} (ניסיון ${attempt})...`);
-        const response = await fetchWithTimeout(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              tools: [{ google_search: {} }],
-              generationConfig: { 
-                temperature: 0.1
-              }
-            })
-          },
-          90000
-        );
+  const prompt = `
+אתה אנליסט השקעות באמריקה הלטינית (השנה היא 2026).
+השתמש בחיפוש גוגל חי (Google Search) כדי לאמת נתונים עבור 8 חברות טכנולוגיה, פינטק, מסחר אלקטרוני או סטארט-אפים **פעילים בלבד** ב${c.name}.
+תן עדיפות לחברות שנוסדו ב${c.name}, והשלם בחברות לטינו-אמריקאיות הפעילות בה משמעותית.
 
-        const data = await response.json();
-        if (!data.error) {
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-          }
-        } else {
-          console.warn(`⚠️ ${model} החזיר: ${data.error.message}`);
-        }
-      } catch (err) {
-        console.warn(`⚠️ שגיאת תקשורת מול ${model}: ${err.message}`);
-      }
-      await new Promise(r => setTimeout(r, 5000));
-    }
-  }
-  return [];
-}
-
-async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר המאומת עם חיפוש חי בגוגל (Google Search Grounding)...");
-  
-  const countriesData = await Promise.all(
-    TARGET_COUNTRIES.map(async (c) => {
-      const [articles, trends] = await Promise.all([
-        fetchLiveNews(c.newsQuery, c.geo),
-        fetchGoogleTrends(c.geo)
-      ]);
-      console.log(`📰 ${c.name}: נאספו ${articles.length} כתבות ו-${trends.length} טרנדים.`);
-      return { ...c, articles, trends };
-    })
-  );
-
-  // מעבדים מדינה-מדינה (או בזוגות) כדי שחיפוש הגוגל החי יאמת כל חברה לעומק
-  for (let i = 0; i < countriesData.length; i++) {
-    const c = countriesData[i];
-    const context = `
-=== מדינה: ${c.name} ===
-כתבות חדשות אחרונות שנאספו:
-${c.articles.map((a, idx) => `${idx + 1}. ${a.title} | URL: ${a.link}`).join('\n') || 'אין כתבות זמינות'}
-טרנדים חמים: ${c.trends.join(', ') || 'אין'}
-`;
-
-    const prompt = `
-אתה אנליסט השקעות בכיר המתמחה באמריקה הלטינית (השנה היא 2026).
-לרשותך גישה לחיפוש חי בגוגל (Google Search). עליך להשתמש בחיפוש החי כדי לאמת כל נתון לפני שאתה מחזיר אותו!
-
-נתוני הרקע שנאספו עבור ${c.name}:
+חדשות אחרונות ב${c.name}:
 ${context}
 
-המשימה שלך:
-זהה ואמת בדיוק **8 חברות** טכנולוגיה, פינטק, מסחר אלקטרוני, בנקאות דיגיטלית או סטארט-אפים **פעילים בלבד** ב${c.name}.
-תן עדיפות ראשונה לחברות שנוסדו ב${c.name}, והשלם עם חברות טק/פינטק לטינו-אמריקאיות הפעילות בה משמעותית.
+חוקי ברזל:
+1. אסור לכלול חברות שנסגרו או הפסיקו פעילות (כמו Frubana).
+2. אסור לכלול תאגידים אמריקאיים/גלובליים (Amazon, Google, Uber, Meta, Apple, Microsoft).
+3. בשדה status:
+   - פרטית שנוסדה ב${c.name}: "פרטית • מקור מקומי (לא נסחרת)"
+   - פרטית ממדינה אחרת: "פרטית • מקור: [שם מדינת המקור] (לא נסחרת)"
+   - נסחרת בבורסה: סימול מדויק (לדוגמה "NYSE: GLOB" או "NASDAQ: DLO")
+   - "לקראת הנפקה" רק אם הוגש תשקיף או הוכרז IPO רשמית.
+4. בשדות valuation ו-raised: אמת בחיפוש גוגל והצמד שנה וסוג (לדוגמה "$85M (סבב B, 2025)" או "$71M קו אשראי (2025)"). כתוב "לא פורסם" רק אם באמת לא פורסם.
 
-חובת אימות בחיפוש גוגל חי (Google Search):
-1. **בדוק בגוגל שהחברה עדיין פעילה ב-2026!** אם חברה נסגרה, פשטה רגל או הפסיקה פעילות ב${c.name} (כמו Frubana שנסגרה) — פסול אותה מיד ובחר חברה פעילה אחרת.
-2. **איסור מוחלט על תאגידים אמריקאיים/גלובליים** (כמו Amazon, Google, Apple, Microsoft, Meta, Uber).
-3. **אמת בחיפוש את מדינת המקור וסטטוס המסחר עבור שדה status:**
-   - אם נוסדה ב${c.name} והיא פרטית: "פרטית • מקור מקומי (לא נסחרת)".
-   - אם נוסדה במדינה אחרת ופועלת ב${c.name}: "פרטית • מקור: [שם מדינת המקור] (לא נסחרת)".
-   - אם נסחרת בבורסה: ציין סימול מדויק (לדוגמה: "NYSE: GLOB" או "NASDAQ: DLO").
-   - כתוב "לקראת הנפקה" **אך ורק** אם מצאת בחיפוש דיווח רשמי ופומבי על הגשת תשקיף (S-1 / F-1) או כוונת IPO קרובה.
-4. **אמת בחיפוש את סבב הגיוס האחרון והשווי המדווח:**
-   - חפש בגוגל "[שם החברה] funding round valuation" והבא את הנתון העדכני והמדויק ביותר כולל **שנה וסוג** (לדוגמה: "$85M (סבב B, 2025)", "$160M (מצטבר, 2026)", "$5.25B (2021)", או "$71M קו אשראי (2025)").
-   - כתוב "לא פורסם" רק אם באמת לא פורסם נתון פומבי.
-
-החזר אך ורק מערך JSON תקין (ללא טקסט מסביב וללא סימני \`\`\`json), במבנה הבא בדיוק:
+החזר מערך JSON בלבד (ללא טקסט נוסף):
 [
   {
     "name": "שם החברה באנגלית",
     "country": "${c.name}",
     "industry": "סקטור בעברית",
-    "status": "סטטוס מאומת כולל מדינת מקור",
+    "status": "סטטוס מאומת",
     "interest_level": "גבוה מאוד | גבוה | במגמת עלייה | בינוני",
     "motivation": "כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית",
     "valuation": "שווי מאומת כולל שנה או 'לא פורסם'",
-    "raised": "הון שגויס מאומת כולל שנה וסוג או 'לא פורסם'",
-    "description": "2 משפטים ברורים בעברית: מה החברה עושה ומה המוצר המרכזי שלה.",
-    "investment_thesis": "2 משפטים אנליטיים בעברית: למה שווה לעקוב או להשקיע בחברה הזו.",
-    "catalyst": "משפט קצר בעברית: מה מדווחים עליה בחדשות לאחרונה (כולל ציון שנה).",
+    "raised": "הון שגויס מאומת כולל שנה או 'לא פורסם'",
+    "description": "2 משפטים בעברית על מה החברה עושה.",
+    "investment_thesis": "2 משפטים בעברית למה שווה לעקוב או להשקיע בה.",
+    "catalyst": "משפט קצר בעברית על חדשות אחרונות.",
     "source_url": "קישור לכתבת המקור או מחרוזת ריקה"
   }
 ]
 `;
 
-    const companies = await callGeminiWithLiveSearch(prompt);
-    console.log(`📦 ${c.name}: התקבלו ${companies.length} חברות מאומתות מחיפוש חי.`);
+  // שימוש במודלים היציבים ביותר ללא ניתוקי Timeout מלאכותיים
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 
-    for (const comp of companies) {
-      if (!comp.name) continue;
-      if (comp.name.toLowerCase().includes('frubana')) continue;
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            tools: [{ google_search: {} }],
+            generationConfig: { temperature: 0.1 }
+          })
+        }
+      );
 
-      const item = {
-        name: comp.name,
-        country: c.name,
-        industry: comp.industry || 'פינטק וטכנולוגיה',
-        status: comp.status || 'פרטית • מקור מקומי (לא נסחרת)',
-        interest_level: comp.interest_level || 'גבוה',
-        motivation: comp.motivation || 'כסף ותשואה (קר)',
-        valuation: comp.valuation || 'לא פורסם',
-        raised: comp.raised || 'לא פורסם',
-        description: comp.description || '',
-        investment_thesis: comp.investment_thesis || '',
-        catalyst: comp.catalyst || 'פעילות צומחת בשוק המקומי',
-        source_url: comp.source_url || ''
-      };
-
-      const { data: existing } = await supabase
-        .from('latam_companies')
-        .select('id')
-        .eq('name', item.name)
-        .eq('country', item.country)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase.from('latam_companies').update(item).eq('id', existing.id);
+      const data = await response.json();
+      if (!data.error) {
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
       } else {
-        const { error } = await supabase.from('latam_companies').insert([item]);
-        if (error) console.error(`❌ שגיאת הכנסה (${item.name}):`, error.message);
+        console.warn(`⚠️ [${c.name}] ${model}: ${data.error.message}`);
       }
+    } catch (err) {
+      console.warn(`⚠️ [${c.name}] שגיאת רשת מול ${model}: ${err.message}`);
     }
-
-    await new Promise(r => setTimeout(r, 2000));
   }
-
-  console.log("🎉 הסריקה המאומתת הושלמה בהצלחה!");
-  process.exit(0);
+  return [];
 }
 
-runAgent();
+async function processCountry(c) {
+  const { count: existingCount } = await supabase
+    .from('latam_companies')
+    .select('*', { count: 'exact', head: true })
+    .eq('country', c.name);
+
+  if (existingCount >= 8) {
+    console.log(`✅ ${c.name}: כבר מלא (${existingCount} חברות) — מדלג.`);
+    return;
+  }
+
+  console.log(`🔍 מתחיל מחקר עבור ${c.name}...`);
+  const articles = await fetchLiveNews(c.newsQuery, c.geo);
+  const companies = await queryGeminiCountry(c, articles);
+  console.log(`📦 ${c.name}: נשמרו ${companies.length} חברות מאומתות.`);
+
+  for (const comp of companies) {
+    if (!comp.name) continue;
+    if (comp.name.toLowerCase().includes('frubana')) continue;
+
+    const item = {
+      name: comp.name,
+      country: c.name,
+      industry: comp.industry || 'פינטק וטכנולוגיה',
+      status: comp.status || 'פרטית • מקור מקומי (לא נסחרת)',
+      interest_level: comp.interest_level || 'גבוה',
+      motivation: comp.motivation || 'כסף ותשואה (קר)',
+      valuation: comp.valuation || 'לא פורסם',
+      raised: comp.raised || 'לא פורסם',
+      description: comp.description || '',
+      investment_thesis: comp.investment_thesis || '',
+      catalyst: comp.catalyst || 'פעילות צומחת בשוק המקומי',
+      source_url: comp.source_url || ''
+    };
+
+    const { data: existing } = await supabase
+      .from('latam_companies')
+      .select('id')
+      .eq('name', item.name)
+      .eq('country', item.country)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('latam_companies').update(item).eq('id', existing.id);
+    } else {
+      await supabase.from('latam_companies').insert([item]);
+    }
+  }
+}
+
+async function
