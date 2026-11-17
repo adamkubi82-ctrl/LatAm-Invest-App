@@ -11,7 +11,6 @@ if (!supabaseUrl || !supabaseKey || !geminiApiKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 9 המדינות המבוקשות (ללא ברזיל, כולל אל סלבדור)
 const TARGET_COUNTRIES = [
   { name: "מקסיקו", geo: "MX", newsQuery: "startup OR fintech OR inversión México empresa tecnología" },
   { name: "קולומביה", geo: "CO", newsQuery: "startup OR fintech OR inversión Colombia empresa tecnología" },
@@ -87,7 +86,6 @@ async function fetchGoogleTrends(geo) {
   }
 }
 
-// קריאה עם אכיפת JSON רשמית של Gemini (מונעת קריסות תחביר לחלוטין)
 async function callGeminiStrictJSON(prompt) {
   const model = "gemini-3.5-flash-lite";
   
@@ -127,7 +125,7 @@ async function callGeminiStrictJSON(prompt) {
 }
 
 async function runAgent() {
-  console.log("🚀 מפעיל את סוכן המחקר המאומת (Strict JSON Mode)...");
+  console.log("🚀 מפעיל את סוכן המחקר המאומת (אימות סטטוס מסחר והנפקה)...");
   
   const countriesData = await Promise.all(
     TARGET_COUNTRIES.map(async (c) => {
@@ -167,8 +165,12 @@ ${batchContext}
 כללי ברזל לאמינות (אפס המצאות):
 1. איסור מוחלט על תאגידים אמריקאיים/גלובליים (כמו Amazon, Google, Apple, Microsoft, Meta, Uber) — כלול אך ורק חברות לטינו-אמריקאיות מקומיות או אזוריות!
 2. אל תמציא שמות של חברות.
-3. בשדות valuation (שווי) ו-raised (הון שגויס): כתוב מספר מדווח אך ורק אם מדובר בעובדה ציבורית ידועה (כמו Plata $3.5B, Rappi $5.3B, Kavak $8.7B, Ualá $3.2B, Clip $2.2B, Addi $1.3B, Bold $0.5B, Bancolombia $12B, Globant $8.5B). אם אין נתון מאומת ודאי — כתוב בדיוק: "לא פורסם".
-4. בשדה status: ציין במדויק האם החברה "פרטית", "אחרי הנפקה" (אם הונפקה בבורסה ב-3 השנים האחרונות), או סימול בורסאי אמיתי אם היא ציבורית ותיקה (לדוגמה: "NYSE: GLOB" או "בורסאית").
+3. בשדות valuation (שווי) ו-raised (הון שגויס): כתוב מספר מדווח אך ורק אם מדובר בעובדה ציבורית ידועה. אם אין נתון מאומת ודאי — כתוב בדיוק: "לא פורסם".
+4. בשדה status (סטטוס מסחר והנפקה — קריטי!):
+   - אם החברה נסחרת בבורסה ותיקה: כתוב את הסימול המדויק (לדוגמה: "NYSE: GLOB" או "BMV: AMX").
+   - אם החברה הונפקה בבורסה ב-3 השנים האחרונות: כתוב "אחרי הנפקה" בצירוף הסימול (לדוגמה: "אחרי הנפקה (NASDAQ: DLO)").
+   - כתוב "לקראת הנפקה" **אך ורק** אם קיים דיווח חדשותי רשמי ופומבי שהחברה הגישה תשקיף (S-1 / F-1) או הודיעה רשמית על כוונת הנפקה קרובה! אל תנחש "לקראת הנפקה" סתם כי החברה גדולה.
+   - לכל שאר החברות הפרטיות שאין להן מניות סחירות ולא הכריזו על הנפקה: כתוב בדיוק "פרטית (לא נסחרת)".
 
 החזר מערך JSON במבנה הבא בדיוק:
 [
@@ -176,7 +178,7 @@ ${batchContext}
     "name": "שם החברה באנגלית",
     "country": "שם המדינה בעברית בדיוק כפי שמופיע בכותרת למעלה",
     "industry": "סקטור בעברית",
-    "status": "פרטית | אחרי הנפקה | או סימול בורסאי אמיתי",
+    "status": "סימול בורסאי | אחרי הנפקה | לקראת הנפקה | פרטית (לא נסחרת)",
     "interest_level": "גבוה מאוד | גבוה | במגמת עלייה | בינוני",
     "motivation": "כסף ותשואה (קר) | חיבור רגשי (מותג/קהילה) | חדשנות טכנולוגית",
     "valuation": "שווי מאומת או 'לא פורסם'",
@@ -198,7 +200,7 @@ ${batchContext}
         name: comp.name,
         country: comp.country,
         industry: comp.industry || 'פינטק וטכנולוגיה',
-        status: comp.status || 'פרטית',
+        status: comp.status || 'פרטית (לא נסחרת)',
         interest_level: comp.interest_level || 'גבוה',
         motivation: comp.motivation || 'כסף ותשואה (קר)',
         valuation: comp.valuation || 'לא פורסם',
