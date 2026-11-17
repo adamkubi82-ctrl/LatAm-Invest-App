@@ -61,6 +61,11 @@
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
       </svg>
     );
+    const IconSearch = () => (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    );
     const IconExternal = () => (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -133,7 +138,7 @@
       return name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 2).toUpperCase() || 'CO';
     };
 
-    const parseInterestScore = (level) => {
+    const parseMediaScore = (level) => {
       if (!level) return 65;
       if (!isNaN(Number(level))) return Number(level);
       if (level.includes('גבוה מאוד')) return 91;
@@ -143,14 +148,13 @@
       return 55;
     };
 
-    // קביעת שלב אך ורק על בסיס עובדות הנפקה מאומתות (לא ניחוש לפי רמת עניין)
     const deriveStage = (item) => {
       const status = (item.status || '').toLowerCase();
       const level = item.interest_level || '';
       
       if (status.includes('אחרי הנפקה')) return 'אחרי הנפקה';
       if (status.includes('לקראת הנפקה')) return 'לקראת הנפקה';
-      if (status.includes('nyse') || status.includes('nasdaq') || status.includes('בורסאית') || status.includes('bmv') || status.includes(':')) {
+      if (status.includes('nyse') || status.includes('nasdaq') || status.includes('בורסאית') || status.includes('bmv') || status.includes('bcs') || status.includes(':')) {
         return 'חזקות';
       }
       if (level.includes('גבוה מאוד') || level.includes('גבוה')) return 'טרנדיות';
@@ -158,7 +162,6 @@
       return 'חזקות';
     };
 
-    // בדיקה עובדתית: האם החברה פרטית ללא מניות וללא דיווח הנפקה קרוב
     const isNonTraded = (company) => {
       const status = (company.status || '').toLowerCase();
       if (
@@ -168,6 +171,7 @@
         status.includes('nasdaq') ||
         status.includes('בורסאית') ||
         status.includes('bmv') ||
+        status.includes('bcs') ||
         status.includes(':')
       ) {
         return false;
@@ -214,9 +218,13 @@
 
             const validCountries = COUNTRIES.map(c => c.id);
             const enrichedDB = fetched
-              .filter(item => validCountries.includes(item.country) && !item.name?.toLowerCase().includes('amazon'))
+              .filter(item => 
+                validCountries.includes(item.country) && 
+                !item.name?.toLowerCase().includes('amazon') &&
+                !item.name?.toLowerCase().includes('frubana')
+              )
               .map(item => {
-                const score = parseInterestScore(item.interest_level);
+                const score = parseMediaScore(item.interest_level);
                 const computedStage = deriveStage(item);
                 return {
                   ...item,
@@ -257,8 +265,8 @@
       };
 
       const stageTooltips = {
-        'טרנדיות': 'חברות פרטיות או ציבוריות שמייצרות המון רעש וחיפושים ברשת כרגע (Hype).',
-        'מומנטום': 'חברות שנמצאות במסלול צמיחה עקבי ומוכח בהכנסות ובגיוסי הון.',
+        'טרנדיות': 'חברות פרטיות או ציבוריות שמייצרות סיקור תקשורתי ורעש ברשת כרגע.',
+        'מומנטום': 'חברות שנמצאות במסלול צמיחה עקבי בהכנסות ובגיוסי הון.',
         'לקראת הנפקה': 'חברות פרטיות שקיים לגביהן דיווח רשמי ופומבי על הגשת תשקיף או תכנון IPO קרוב.',
         'אחרי הנפקה': 'חברות טכנולוגיה ופינטק שהונפקו בבורסה ב-3 השנים האחרונות.',
         'חזקות': 'חברות עוגן מבוססות ובורסאיות ותיקות עם נתח שוק משמעותי.'
@@ -352,23 +360,23 @@
                 <table className="w-full text-right border-collapse">
                   <thead>
                     <tr className="border-b border-[#1E2732] text-gray-400 text-xs bg-[#141B24]">
-                      <th className="py-4 px-5 font-medium">חברה</th>
-                      <th className="py-4 px-4 font-medium">מדינה</th>
-                      <th className="py-4 px-4 font-medium">סקטור</th>
-                      <th className="py-4 px-4 font-medium text-center">
+                      <th className="py-4 px-4 font-medium min-w-[180px]">חברה</th>
+                      <th className="py-4 px-3 font-medium whitespace-nowrap">מדינה</th>
+                      <th className="py-4 px-3 font-medium min-w-[120px]">סקטור</th>
+                      <th className="py-4 px-3 font-medium text-center whitespace-nowrap">
                         <Tooltip text="סיווג החברה: טרנדיות, מומנטום, לקראת הנפקה (דיווח רשמי בלבד), אחרי הנפקה או חברות עוגן חזקות." position="bottom">
                           שלב
                         </Tooltip>
                       </th>
-                      <th className="py-4 px-4 font-medium">
-                        <Tooltip text="מדד עניין יחסי (0-100) המשקלל נפח חיפושים ב-Google Trends וסיקור תקשורתי עדכני במדינת היעד." position="bottom">
-                          עניין ↓
+                      <th className="py-4 px-3 font-medium whitespace-nowrap">
+                        <Tooltip text="ציון יחסי (0-100) המבוסס על היקף הסיקור החדשותי ב-30 הימים האחרונים במדינת היעד." position="bottom">
+                          בולטות ↓
                         </Tooltip>
                       </th>
-                      <th className="py-4 px-4 font-medium">המניע המרכזי</th>
-                      <th className="py-4 px-4 font-medium">מה מדווחים עליה</th>
-                      <th className="py-4 px-4 font-medium">הון שגויס</th>
-                      <th className="py-4 px-5 font-medium">שווי מוערך</th>
+                      <th className="py-4 px-3 font-medium min-w-[110px]">המניע המרכזי</th>
+                      <th className="py-4 px-3 font-medium min-w-[160px]">מה מדווחים עליה</th>
+                      <th className="py-4 px-3 font-medium min-w-[160px]">הון שגויס</th>
+                      <th className="py-4 px-4 font-medium min-w-[160px]">שווי מוערך</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1E2732]/60 text-sm">
@@ -393,9 +401,9 @@
                             onClick={() => setSelectedCompany(company)}
                             className="hover:bg-[#17202B] transition-colors cursor-pointer group"
                           >
-                            <td className="py-4 px-5">
+                            <td className="py-4 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-[#1A232E] border border-[#2A3644] flex items-center justify-center font-bold text-xs text-gray-300 group-hover:border-[#B2FF05]/50 group-hover:text-[#B2FF05] transition-colors shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-[#1A232E] border border-[#2A3644] flex items-center justify-center font-bold text-xs text-gray-300 group-hover:border-[#B2FF05]/50 group-hover:text-[#B2FF05] transition-colors shrink-0">
                                   {getInitials(company.name)}
                                 </div>
                                 <div>
@@ -413,24 +421,24 @@
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-0.5">
+                                  <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                                     <span className="text-emerald-400">↗</span>
-                                    <span>{company.status || 'פרטית (לא נסחרת)'}</span>
+                                    <span>{company.status || 'פרטית • מקור מקומי (לא נסחרת)'}</span>
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 px-4 text-gray-300 text-xs whitespace-nowrap">{company.country}</td>
-                            <td className="py-4 px-4 text-gray-400 text-xs">{company.sector}</td>
-                            <td className="py-4 px-4 text-center whitespace-nowrap">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(company.stage)}`}>
+                            <td className="py-4 px-3 text-gray-300 text-xs whitespace-nowrap">{company.country}</td>
+                            <td className="py-4 px-3 text-gray-400 text-xs leading-snug">{company.sector}</td>
+                            <td className="py-4 px-3 text-center whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStageBadge(company.stage)}`}>
                                 {company.stage}
                               </span>
                             </td>
-                            <td className="py-4 px-4">
-                              <div className="flex items-center gap-2.5">
-                                <span className="font-bold text-white w-6">{company.interest_num}</span>
-                                <div className="w-14 h-1.5 bg-[#1E2732] rounded-full overflow-hidden">
+                            <td className="py-4 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-white w-5">{company.interest_num}</span>
+                                <div className="w-12 h-1.5 bg-[#1E2732] rounded-full overflow-hidden">
                                   <div 
                                     className="h-full bg-[#B2FF05] rounded-full" 
                                     style={{ width: `${Math.min(100, company.interest_num)}%` }}
@@ -438,12 +446,16 @@
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 px-4 text-gray-300 text-xs">{company.driver_type}</td>
-                            <td className="py-4 px-4 text-gray-400 text-xs max-w-[220px] truncate" title={company.catalyst}>
+                            <td className="py-4 px-3 text-gray-300 text-xs leading-snug">{company.driver_type}</td>
+                            <td className="py-4 px-3 text-gray-400 text-xs max-w-[180px] truncate" title={company.catalyst}>
                               {company.catalyst || 'פעילות צומחת בשוק המקומי'}
                             </td>
-                            <td className="py-4 px-4 text-gray-300 font-mono text-xs whitespace-nowrap">{company.raised || 'לא פורסם'}</td>
-                            <td className="py-4 px-5 font-bold text-white font-mono text-xs whitespace-nowrap">{company.valuation || 'לא פורסם'}</td>
+                            <td className="py-4 px-3 text-gray-300 font-mono text-xs max-w-[200px] leading-snug break-words">
+                              {company.raised || 'לא פורסם'}
+                            </td>
+                            <td className="py-4 px-4 font-bold text-white font-mono text-xs max-w-[200px] leading-snug break-words">
+                              {company.valuation || 'לא פורסם'}
+                            </td>
                           </tr>
                         );
                       })
@@ -473,7 +485,7 @@
 
                   <div className="text-left">
                     <div className="text-xs text-gray-400 mb-1">
-                      {selectedCompany.country} • {selectedCompany.sector}
+                      פעילות ב{selectedCompany.country} • {selectedCompany.sector}
                     </div>
                     <div className="flex items-center justify-end gap-2.5 flex-wrap">
                       {isNonTraded(selectedCompany) && (
@@ -490,7 +502,7 @@
                       </span>
                     </div>
                     <div className="text-xs text-gray-300 mt-1.5 font-mono">
-                      {selectedCompany.status || 'פרטית (לא נסחרת)'} • שווי מוערך: <span className="font-bold text-white">{selectedCompany.valuation || 'לא פורסם'}</span>
+                      {selectedCompany.status || 'פרטית (לא נסחרת)'}
                     </div>
                   </div>
                 </div>
@@ -515,21 +527,21 @@
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
-                    <div className="text-xs text-gray-400">הון שגויס</div>
-                    <div className="text-lg font-black text-white mt-1 font-mono">{selectedCompany.raised || 'לא פורסם'}</div>
+                    <div className="text-xs text-gray-400">הון שגויס (כולל שנה וסוג)</div>
+                    <div className="text-sm font-black text-white mt-1.5 font-mono leading-relaxed">{selectedCompany.raised || 'לא פורסם'}</div>
                   </div>
                   <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
-                    <div className="text-xs text-gray-400">שווי מוערך</div>
-                    <div className="text-lg font-black text-[#B2FF05] mt-1 font-mono">{selectedCompany.valuation || 'לא פורסם'}</div>
+                    <div className="text-xs text-gray-400">שווי מוערך (כולל שנה)</div>
+                    <div className="text-sm font-black text-[#B2FF05] mt-1.5 font-mono leading-relaxed">{selectedCompany.valuation || 'לא פורסם'}</div>
                   </div>
                 </div>
 
                 <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4">
-                  <div className="text-xs text-gray-400 mb-2">מדדים</div>
+                  <div className="text-xs text-gray-400 mb-2">מדדים (הערכת סיקור 30 יום)</div>
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-300 font-medium">עניין וחיפושים</span>
+                    <span className="text-xs text-gray-300 font-medium">בולטות תקשורתית</span>
                     <span className="text-sm font-bold text-white">{selectedCompany.interest_num}</span>
                     <div className="flex-1 h-2 bg-[#1E2732] rounded-full overflow-hidden">
                       <div 
@@ -540,23 +552,34 @@
                   </div>
                 </div>
 
-                <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
                       <IconNews />
                       <span>מה מדווחים עליה</span>
                     </div>
-                    {selectedCompany.source_url && (
+                    <div className="flex items-center gap-3">
                       <a 
-                        href={selectedCompany.source_url} 
+                        href={`https://www.google.com/search?q=${encodeURIComponent(`"${selectedCompany.name}" ${selectedCompany.country} funding valuation`)}`}
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-bold"
+                        className="text-xs text-gray-300 hover:text-[#B2FF05] flex items-center gap-1 bg-[#18212C] px-2.5 py-1 rounded-lg border border-[#2A3644] transition-colors"
                       >
-                        <span>לכתבת המקור</span>
-                        <IconExternal />
+                        <IconSearch />
+                        <span>אמת נתונים בגוגל</span>
                       </a>
-                    )}
+                      {selectedCompany.source_url && (
+                        <a 
+                          href={selectedCompany.source_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-bold"
+                        >
+                          <span>לכתבת המקור</span>
+                          <IconExternal />
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-gray-200 leading-relaxed">
                     {selectedCompany.catalyst || 'פעילות צומחת בשוק המקומי.'}
