@@ -199,19 +199,25 @@
     };
 
     const buildChatGptMoodBoardUrl = (company) => {
-      const promptText = `צור תמונה אחת בודדת (16:9) שהיא קולאז' Mood Board המחולק ל-4 ריבועים שווים (גריד 2x2) של באנרים פרסומיים מודרניים עבור המותג ${company.name} (${company.country} • ${company.sector}).
+      const promptText = `Create a single 16:9 image that is a 2x2 grid Mood Board collage (4 equal square panels) of high-converting digital ad banners for the real brand "${company.name}" operating in ${company.country} (${company.sector}).
 
-פרטי המותג:
-- קהל יעד: ${company.target_audience}
-- כיוון קריאייטיב: ${company.creative_idea}
+CRITICAL BRAND & LANGUAGE RULES:
+1. LANGUAGE: ALL headlines, badges, and call-to-action buttons inside the image MUST be written in natural, authentic local SPANISH tailored for ${company.country}. ZERO Hebrew text inside the image.
+2. BRAND IDENTITY & LOGO: You MUST use the exact official brand name "${company.name}" and its real-world authentic brand colors and typography. Do NOT invent fake look-alike brand names or distorted logos.
 
-מבנה 4 הריבועים בתוך התמונה:
-- ריבוע 1 (למעלה מימין): סגנון פיננסי כהה ונקי, גרף צמיחה וממשק מובייל.
-- ריבוע 2 (למעלה משמאל): סגנון הייטק ניאון מודרני, כרטיס דיגיטלי ואלמנטים טכנולוגיים.
-- ריבוע 3 (למטה מימין): סגנון לייף-סטייל דיגיטלי לצעירים, צבעוניות תוססת.
-- ריבוע 4 (למטה משמאל): סגנון יוקרתי מינימליסטי עם לוגו ${company.name} בולט.
+Brand Context:
+- Target Audience: ${company.target_audience}
+- Core Creative Angle: ${company.creative_idea}
 
-הנחיה: אל תכתוב הסברים ארוכים. ייצר מיד את תמונת הקולאז' 2x2.`;
+4-Panel Grid Layout:
+- Top-Right Panel: Dark sleek fintech/corporate aesthetic, growth chart UI, sharp Spanish headline.
+- Top-Left Panel: Vibrant modern neon-tech aesthetic, digital card/app mockup, bold Spanish headline.
+- Bottom-Right Panel: Authentic local lifestyle scene in ${company.country} with young digital users and warm natural lighting.
+- Bottom-Left Panel: Minimalist luxury/trust aesthetic highlighting the official "${company.name}" brand identity and a clear Spanish CTA button.
+
+OUTPUT INSTRUCTIONS:
+1. First, generate the 2x2 Mood Board image immediately.
+2. Right below the image, provide a short, clear breakdown in HEBREW explaining the exact Spanish text written in each of the 4 panels and its translation.`;
 
       return `https://chatgpt.com/?q=${encodeURIComponent(promptText)}`;
     };
@@ -295,7 +301,6 @@
               </div>
             </div>
 
-            {/* שורת יצירת הפרעה מותאמת אישית / תיקון */}
             <div className="bg-[#11171F] border border-[#232D36] p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center">
               <input
                 type="text"
@@ -322,7 +327,7 @@
               </div>
             ) : error ? (
               <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-3">
-                <div className="text-sm font-bold text-red-300">{error}</div>
+                <div className="text-sm font-bold text-red-300 break-words">{error}</div>
                 <button
                   onClick={() => generateScenes()}
                   className="bg-[#161E27] hover:bg-[#1E2732] text-white px-4 py-2 rounded-xl text-xs font-bold"
@@ -796,7 +801,6 @@
                   <p className="text-sm text-gray-200 leading-relaxed">{selectedCompany.target_audience}</p>
                 </div>
 
-                {/* שני מסלולי הקריאייטיב במקביל */}
                 <div className="bg-[#11171F] border border-purple-500/40 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-purple-300 font-bold">
