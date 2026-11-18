@@ -89,6 +89,11 @@
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
       </svg>
     );
+    const IconTrash = () => (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    );
     const IconDownload = () => (
       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -203,26 +208,34 @@
       return true;
     };
 
+    const buildInvestorCreativeBrief = (item) => {
+      const raw = item.creative_idea || '';
+      const consumerKeywords = ['משלוח חינם', 'הזמינו', 'קופון', 'הנחה', 'קנו עכשיו', 'free delivery', 'order now', 'discount'];
+      const isConsumerPolluted = consumerKeywords.some(kw => raw.toLowerCase().includes(kw));
+
+      if (!raw || isConsumerPolluted) {
+        return `זווית השקעה (Retail Investors): "אתם כבר משלמים ל-${item.name} ב${item.country} — לא הגיע הזמן שתרוויחו ממנה?" • מסר: הפיכת מותג מוכר להכנסה נוספת קלה (ללא ניסיון קודם). • ויז'ואל: צילום יומיומי אותנטי של לקוח מקומי עם מותג ${item.name} ושטרות כסף מקומיים.`;
+      }
+      return raw;
+    };
+
     const buildChatGptMoodBoardUrl = (company) => {
-      const promptText = `Create a single 16:9 image that is a 2x2 grid Mood Board collage (4 equal square panels) of high-converting digital ad banners for the real brand "${company.name}" operating in ${company.country} (${company.sector}).
+      const promptText = `Create a single 16:9 image that is a 2x2 grid Mood Board collage (4 equal square panels) of direct-response NATIVE / PERFORMANCE INVESTMENT ADS focused on INVESTING IN THE STOCK / GROWTH OF "${company.name}" (${company.country}).
 
-CRITICAL BRAND & LANGUAGE RULES:
-1. LANGUAGE: ALL headlines, badges, and call-to-action buttons inside the image MUST be written in natural, authentic local SPANISH tailored for ${company.country}. ZERO Hebrew text inside the image.
-2. BRAND IDENTITY & LOGO: You MUST use the exact official brand name "${company.name}" and its real-world authentic brand colors and typography. Do NOT invent fake look-alike brand names or distorted logos.
+CRITICAL PERSPECTIVE RULE (READ CAREFULLY):
+- DO NOT write an ad from "${company.name}" asking users to download "${company.name}"'s app or buy "${company.name}"'s product (NEVER write "Descargá la app de ${company.name}").
+- Instead, these are THIRD-PARTY INVESTMENT OPPORTUNITY ADS showing regular people in ${company.country} how to MAKE EXTRA INCOME by investing in "${company.name}" itself (shares/CFDs/growth).
+- ALL text inside the image MUST be in natural local SPANISH for ${company.country}. ZERO Hebrew inside the image. Use the official "${company.name}" logo/brand look accurately.
 
-Brand Context:
-- Target Audience: ${company.target_audience}
-- Core Creative Angle: ${company.creative_idea}
-
-4-Panel Grid Layout:
-- Top-Right Panel: Dark sleek fintech/corporate aesthetic, growth chart UI, sharp Spanish headline.
-- Top-Left Panel: Vibrant modern neon-tech aesthetic, digital card/app mockup, bold Spanish headline.
-- Bottom-Right Panel: Authentic local lifestyle scene in ${company.country} with young digital users and warm natural lighting.
-- Bottom-Left Panel: Minimalist luxury/trust aesthetic highlighting the official "${company.name}" brand identity and a clear Spanish CTA button.
+EXACT HEADLINE ANGLES FOR THE 4 PANELS (adapt naturally to ${company.country} Spanish, max 7-9 words per panel):
+- Top-Right Panel (Simple Extra Income Angle): "¿Ingresos extra sin complicarte? Ganá con ${company.name}" + profit growth chart & "${company.name}" logo.
+- Top-Left Panel (Customer-to-Investor Angle): "Ya usás ${company.name}. Ahora ganá dinero con ellos" + local person in ${company.country} smiling at phone returns.
+- Bottom-Right Panel (Profit Calculator / Proof Angle): "Probamos cuánto podrías ganar con ${company.name}" + sleek potential earnings calculator UI.
+- Bottom-Left Panel (Beginners / Over 50s Angle): "¿Sin experiencia o +50? Invertí fácil en ${company.name}" + friendly local older adult with coffee & smartphone.
 
 OUTPUT INSTRUCTIONS:
-1. First, generate the 2x2 Mood Board image immediately.
-2. Right below the image, provide a short, clear breakdown in HEBREW explaining the exact Spanish text written in each of the 4 panels and its translation.`;
+1. Generate the 2x2 Mood Board image immediately.
+2. Right below the image, list the exact Spanish text from each of the 4 panels and its Hebrew translation.`;
 
       return `https://chatgpt.com/?q=${encodeURIComponent(promptText)}`;
     };
@@ -234,6 +247,10 @@ OUTPUT INSTRUCTIONS:
       const [customTwist, setCustomTwist] = useState('');
       const [generatingCustom, setGeneratingCustom] = useState(false);
       const [copiedIdx, setCopiedIdx] = useState(null);
+
+      // ניהול שורות התיקון והטעינה לכל כרטיס בנפרד
+      const [refineInputs, setRefineInputs] = useState({});
+      const [refiningId, setRefiningId] = useState(null);
 
       const generateScenes = async (twist = '') => {
         if (twist) {
@@ -262,11 +279,16 @@ OUTPUT INSTRUCTIONS:
             throw new Error(result.error || 'שגיאה ביצירת מודעות הטאבולה');
           }
 
-          if (twist && result.ads?.length > 0) {
-            setAds(prev => [result.ads[0], ...prev]);
+          const stampedAds = (result.ads || []).map((item, i) => ({
+            ...item,
+            uid: `${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`
+          }));
+
+          if (twist && stampedAds.length > 0) {
+            setAds(prev => [stampedAds[0], ...prev]);
             setCustomTwist('');
           } else {
-            setAds(result.ads || []);
+            setAds(stampedAds);
           }
         } catch (err) {
           setError(err.message);
@@ -280,22 +302,66 @@ OUTPUT INSTRUCTIONS:
         generateScenes();
       }, [company.name]);
 
+      const handleDeleteCard = (uid) => {
+        setAds(prev => prev.filter(item => item.uid !== uid));
+      };
+
+      const handleRefineCard = async (ad) => {
+        const feedback = (refineInputs[ad.uid] || '').trim();
+        if (!feedback) return;
+
+        setRefiningId(ad.uid);
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/generate-disruptive-ads`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              company,
+              refineFeedback: feedback,
+              currentAd: {
+                image: ad.image,
+                headline_es: ad.headline_es,
+                headline_he: ad.headline_he
+              }
+            })
+          });
+
+          const result = await res.json();
+          if (!res.ok) {
+            throw new Error(result.error || 'שגיאה בתיקון הכרטיס');
+          }
+
+          if (result.ad) {
+            setAds(prev => prev.map(item => item.uid === ad.uid ? { ...result.ad, uid: ad.uid } : item));
+            setRefineInputs(prev => ({ ...prev, [ad.uid]: '' }));
+          }
+        } catch (err) {
+          alert(`שגיאה בתיקון: ${err.message}`);
+        } finally {
+          setRefiningId(null);
+        }
+      };
+
       const handleDownload = (dataUrl, index) => {
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `${company.name.replace(/\s+/g, '_')}_taboola_${index + 1}.png`;
+        link.download = `${company.name.replace(/\s+/g, '_')}_taboola_invest_${index + 1}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       };
 
-      const handleHeadlineChange = (index, newText) => {
-        setAds(prev => prev.map((item, i) => i === index ? { ...item, headline_es: newText } : item));
+      const handleHeadlineChange = (uid, newText) => {
+        setAds(prev => prev.map(item => item.uid === uid ? { ...item, headline_es: newText } : item));
       };
 
-      const handleCopyHeadline = (text, index) => {
+      const handleCopyHeadline = (text, uid) => {
         navigator.clipboard.writeText(text);
-        setCopiedIdx(index);
+        setCopiedIdx(uid);
         setTimeout(() => setCopiedIdx(null), 2000);
       };
 
@@ -311,9 +377,9 @@ OUTPUT INSTRUCTIONS:
               </button>
 
               <div className="text-left">
-                <div className="text-xs text-[#B2FF05] font-black uppercase tracking-wider mb-0.5">TABOOLA NATIVE AD STUDIO</div>
-                <h2 className="text-lg font-black text-white">יחידות פרסום שלמות עבור {company.name} ({company.country})</h2>
-                <p className="text-xs text-gray-400">תמונת הפרעה לא-מלוקקת + כותרת Taboola מתחת לתמונה (עד 99 תווים, עריכה חיה)</p>
+                <div className="text-xs text-[#B2FF05] font-black uppercase tracking-wider mb-0.5">TABOOLA INVESTMENT AD STUDIO</div>
+                <h2 className="text-lg font-black text-white">יחידות פרסום להשקעה ב-{company.name} ({company.country})</h2>
+                <p className="text-xs text-gray-400">תמונת הפרעה לא-מלוקקת + כותרת השקעה מתחת לתמונה • ניתן לתקן או למחוק כל כרטיס בנפרד</p>
               </div>
             </div>
 
@@ -322,7 +388,7 @@ OUTPUT INSTRUCTIONS:
                 type="text"
                 value={customTwist}
                 onChange={e => setCustomTwist(e.target.value)}
-                placeholder={`הקלד רעיון לסצנת הפרעה חדשה (למשל: "נהג מונית בודק את האפליקציה של ${company.name} כשבמושב האחורי יושב תוכי ליד כמה שטרות")...`}
+                placeholder={`הוסף פוסט חדש עם רעיון משלך (למשל: "פנסיונר מקומי בודק רווחים בטלפון ליד חולצת ${company.name} וחתול שמושך שטר")...`}
                 className="flex-1 w-full bg-[#0B0F14] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-xs text-white outline-none"
               />
               <button
@@ -331,15 +397,15 @@ OUTPUT INSTRUCTIONS:
                 className="w-full sm:w-auto bg-[#B2FF05] hover:bg-[#a1e604] disabled:opacity-40 text-[#0B0F14] px-5 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 whitespace-nowrap transition-all"
               >
                 <IconSparkles />
-                <span>{generatingCustom ? 'מייצר פוסט חדש...' : 'צור פוסט מותאם'}</span>
+                <span>{generatingCustom ? 'מייצר פוסט חדש...' : 'הוסף פוסט מותאם'}</span>
               </button>
             </div>
 
             {loading ? (
               <div className="py-20 text-center space-y-4 bg-[#11171F] border border-[#1E2732] rounded-2xl">
                 <div className="w-10 h-10 border-4 border-[#B2FF05] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="text-sm font-bold text-white">מייצר 3 יחידות Taboola מלאות עבור {company.name}...</div>
-                <p className="text-xs text-gray-400">צילומי סמארטפון אותנטיים ללא פילטרים + כותרות המרה קצרות בספרדית מקומית</p>
+                <div className="text-sm font-bold text-white">מייצר 3 יחידות Taboola ממוקדות-השקעה עבור {company.name}...</div>
+                <p className="text-xs text-gray-400">צילומי סמארטפון אותנטיים ללא פילטרים + כותרות השקעה בספרדית מקומית (עד 99 תווים)</p>
               </div>
             ) : error ? (
               <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-3">
@@ -351,27 +417,51 @@ OUTPUT INSTRUCTIONS:
                   נסה שוב
                 </button>
               </div>
+            ) : ads.length === 0 ? (
+              <div className="py-16 text-center space-y-3 bg-[#11171F] border border-[#1E2732] rounded-2xl">
+                <div className="text-sm text-gray-400">הסרת את כל האופציות מהמסך.</div>
+                <button
+                  onClick={() => generateScenes()}
+                  className="bg-[#B2FF05] text-[#0B0F14] px-4 py-2 rounded-xl text-xs font-black"
+                >
+                  ייצר סט חדש של 3 פוסטים
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {ads.map((ad, idx) => {
                   const charCount = (ad.headline_es || '').length;
                   const isOverLimit = charCount > 99;
+                  const isRefiningThis = refiningId === ad.uid;
 
                   return (
-                    <div key={idx} className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-hidden flex flex-col shadow-xl">
-                      {/* תמונת הטאבולה (ללא טקסט עליה) */}
+                    <div key={ad.uid} className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-hidden flex flex-col shadow-xl relative">
+                      {isRefiningThis && (
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-xs z-20 flex flex-col items-center justify-center p-4 text-center space-y-2">
+                          <div className="w-8 h-8 border-3 border-[#B2FF05] border-t-transparent rounded-full animate-spin"></div>
+                          <div className="text-xs font-bold text-[#B2FF05]">מדייק את הפוסט לפי הבקשה שלך...</div>
+                        </div>
+                      )}
+
                       <div className="relative aspect-video bg-black">
                         <img src={ad.image} alt={`Taboola Ad ${idx + 1}`} className="w-full h-full object-cover" />
                         <span className="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-md border border-white/10">
-                          TABOOLA UNIT #{idx + 1}
+                          TABOOLA #{idx + 1}
                         </span>
+                        <button
+                          onClick={() => handleDeleteCard(ad.uid)}
+                          title="זרוק אופציה זו"
+                          className="absolute top-2.5 left-2.5 bg-red-950/85 hover:bg-red-600 text-red-200 hover:text-white px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 border border-red-500/40 transition-colors"
+                        >
+                          <IconTrash />
+                          <span>זרוק</span>
+                        </button>
                       </div>
 
-                      {/* אזור הכותרת מתחת לתמונה - בדיוק כמו בפיד של Taboola */}
                       <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-[#141B24]">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-gray-400 font-medium">כותרת מתחת לתמונה (ניתנת לעריכה):</span>
+                            <span className="text-gray-400 font-medium">כותרת מתחת לתמונה:</span>
                             <span className={`font-mono font-bold px-2 py-0.5 rounded ${
                               isOverLimit ? 'bg-red-500/20 text-red-300' : 'bg-[#B2FF05]/15 text-[#B2FF05]'
                             }`}>
@@ -383,7 +473,7 @@ OUTPUT INSTRUCTIONS:
                             dir="ltr"
                             rows="2"
                             value={ad.headline_es}
-                            onChange={e => handleHeadlineChange(idx, e.target.value)}
+                            onChange={e => handleHeadlineChange(ad.uid, e.target.value)}
                             className="w-full bg-[#0B0F14] border border-[#2A3644] focus:border-[#B2FF05] rounded-xl p-2.5 text-sm font-bold text-white leading-snug outline-none resize-none text-left"
                           />
 
@@ -392,22 +482,43 @@ OUTPUT INSTRUCTIONS:
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#1E2732]">
-                          <button
-                            onClick={() => handleCopyHeadline(ad.headline_es, idx)}
-                            className="flex-1 bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-                          >
-                            <IconCopy />
-                            <span>{copiedIdx === idx ? 'הועתק!' : 'העתק כותרת'}</span>
-                          </button>
+                        {/* שורת תיקונים ודיוקים ייעודית לכרטיס */}
+                        <div className="pt-2 border-t border-[#1E2732] space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              value={refineInputs[ad.uid] || ''}
+                              onChange={e => setRefineInputs(prev => ({ ...prev, [ad.uid]: e.target.value }))}
+                              onKeyDown={e => e.key === 'Enter' && handleRefineCard(ad)}
+                              placeholder="בקש תיקון לתמונה או לכותרת..."
+                              className="flex-1 bg-[#0B0F14] border border-[#2A3644] focus:border-[#B2FF05] rounded-lg px-2.5 py-1.5 text-[11px] text-white outline-none"
+                            />
+                            <button
+                              onClick={() => handleRefineCard(ad)}
+                              disabled={!(refineInputs[ad.uid] || '').trim() || isRefiningThis}
+                              className="bg-[#232F3E] hover:bg-[#B2FF05] hover:text-black disabled:opacity-40 text-[#B2FF05] border border-[#B2FF05]/30 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap"
+                            >
+                              תקן
+                            </button>
+                          </div>
 
-                          <button
-                            onClick={() => handleDownload(ad.image, idx)}
-                            className="flex-1 bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] py-1.5 px-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all"
-                          >
-                            <IconDownload />
-                            <span>הורד תמונה</span>
-                          </button>
+                          <div className="flex items-center justify-between gap-2">
+                            <button
+                              onClick={() => handleCopyHeadline(ad.headline_es, ad.uid)}
+                              className="flex-1 bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              <IconCopy />
+                              <span>{copiedIdx === ad.uid ? 'הועתק!' : 'העתק כותרת'}</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDownload(ad.image, idx)}
+                              className="flex-1 bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] py-1.5 px-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all"
+                            >
+                              <IconDownload />
+                              <span>הורד תמונה</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -478,8 +589,8 @@ OUTPUT INSTRUCTIONS:
                 investment_thesis: item.investment_thesis || `החברה נהנית מצמיחה מואצת ב${item.country} ומבססת מעמד מוביל בסקטור.`,
                 score_breakdown: item.score_breakdown || 'שקלול 35% נוכחות פרסומית, 25% מוכרות מותג, 25% סמל סטטוס ו-15% מומנטום חדשותי.',
                 audience_evidence: item.audience_evidence || `מבוסס על פרופיל השוק של סקטור ${item.industry || 'הטכנולוגיה'} וסיקור הפעילות של ${item.name} ב${item.country}.`,
-                target_audience: item.target_audience || `משקיעי ריטייל ולקוחות דיגיטליים ב${item.country} המחפשים פתרונות מתקדמים וצמיחה בסקטור ${item.industry || 'הטכנולוגיה'}.`,
-                creative_idea: item.creative_idea || `כותרת: "הדור הבא של ${item.industry || 'הטכנולוגיה'} ב${item.country} כבר כאן" • ויז'ואל: ממשק נקי עם נתוני צמיחה והנעה לבדיקת הזדמנות ההשקעה ב-${item.name}.`
+                target_audience: item.target_audience || `משקיעי ריטייל ב${item.country} שמכירים את ${item.name} כצרכנים ומחפשים דרך פשוטה להרוויח מהצמיחה שלה.`,
+                creative_idea: buildInvestorCreativeBrief(item)
               };
             })
             .sort((a, b) => b.interest_num - a.interest_num);
@@ -864,7 +975,7 @@ OUTPUT INSTRUCTIONS:
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-purple-300 font-bold">
                       <IconSparkles />
-                      <span>הצעת קריאייטיב וייצור מודעות</span>
+                      <span>הצעת קריאייטיב לגיוס משקיעים</span>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
