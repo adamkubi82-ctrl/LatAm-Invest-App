@@ -60,8 +60,13 @@
       </svg>
     );
     const IconSparkles = () => (
-      <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+      </svg>
+    );
+    const IconGrid = () => (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
       </svg>
     );
     const IconNews = () => (
@@ -82,6 +87,11 @@
     const IconClose = () => (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+    const IconDownload = () => (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
     );
 
@@ -188,6 +198,164 @@
       return true;
     };
 
+    const buildChatGptMoodBoardUrl = (company) => {
+      const promptText = `צור תמונה אחת בודדת (16:9) שהיא קולאז' Mood Board המחולק ל-4 ריבועים שווים (גריד 2x2) של באנרים פרסומיים מודרניים עבור המותג ${company.name} (${company.country} • ${company.sector}).
+
+פרטי המותג:
+- קהל יעד: ${company.target_audience}
+- כיוון קריאייטיב: ${company.creative_idea}
+
+מבנה 4 הריבועים בתוך התמונה:
+- ריבוע 1 (למעלה מימין): סגנון פיננסי כהה ונקי, גרף צמיחה וממשק מובייל.
+- ריבוע 2 (למעלה משמאל): סגנון הייטק ניאון מודרני, כרטיס דיגיטלי ואלמנטים טכנולוגיים.
+- ריבוע 3 (למטה מימין): סגנון לייף-סטייל דיגיטלי לצעירים, צבעוניות תוססת.
+- ריבוע 4 (למטה משמאל): סגנון יוקרתי מינימליסטי עם לוגו ${company.name} בולט.
+
+הנחיה: אל תכתוב הסברים ארוכים. ייצר מיד את תמונת הקולאז' 2x2.`;
+
+      return `https://chatgpt.com/?q=${encodeURIComponent(promptText)}`;
+    };
+
+    function DisruptiveStudio({ company, onClose }) {
+      const [images, setImages] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState('');
+      const [customTwist, setCustomTwist] = useState('');
+      const [generatingCustom, setGeneratingCustom] = useState(false);
+
+      const generateScenes = async (twist = '') => {
+        if (twist) {
+          setGeneratingCustom(true);
+        } else {
+          setLoading(true);
+        }
+        setError('');
+
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/generate-disruptive-ads`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              company,
+              customTwist: twist || undefined
+            })
+          });
+
+          const result = await res.json();
+          if (!res.ok) {
+            throw new Error(result.error || 'שגיאה ביצירת התמונות');
+          }
+
+          if (twist && result.images?.length > 0) {
+            setImages(prev => [result.images[0], ...prev]);
+            setCustomTwist('');
+          } else {
+            setImages(result.images || []);
+          }
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+          setGeneratingCustom(false);
+        }
+      };
+
+      useEffect(() => {
+        generateScenes();
+      }, [company.name]);
+
+      const handleDownload = (dataUrl, index) => {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `${company.name.replace(/\s+/g, '_')}_disruptive_${index + 1}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col p-4 sm:p-6 overflow-y-auto">
+          <div className="max-w-6xl w-full mx-auto flex-1 flex flex-col space-y-6 my-auto">
+            <div className="flex items-center justify-between border-b border-[#1E2732] pb-4">
+              <button 
+                onClick={onClose}
+                className="text-gray-400 hover:text-white p-2 rounded-xl bg-[#161E27] transition-colors"
+              >
+                <IconClose />
+              </button>
+
+              <div className="text-left">
+                <div className="text-xs text-[#B2FF05] font-black uppercase tracking-wider mb-0.5">DISRUPTIVE AI AD STUDIO</div>
+                <h2 className="text-lg font-black text-white">סצנות "הפרעה" ריאליסטיות עבור {company.name} ({company.country})</h2>
+                <p className="text-xs text-gray-400">שילוב מותג, שטרות כסף מקומיים, דגל המדינה ואלמנט הפרעה מפתיע</p>
+              </div>
+            </div>
+
+            {/* שורת יצירת הפרעה מותאמת אישית / תיקון */}
+            <div className="bg-[#11171F] border border-[#232D36] p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center">
+              <input
+                type="text"
+                value={customTwist}
+                onChange={e => setCustomTwist(e.target.value)}
+                placeholder={`הקלד רעיון להפרעה משלך (למשל: "שליח על אופנוע עם תיק ${company.name} עוצר ליד שוק מקומי מלא שטרות כסף ותוכי על הכידון")...`}
+                className="flex-1 w-full bg-[#0B0F14] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-xs text-white outline-none"
+              />
+              <button
+                onClick={() => generateScenes(customTwist)}
+                disabled={!customTwist.trim() || generatingCustom || loading}
+                className="w-full sm:w-auto bg-[#B2FF05] hover:bg-[#a1e604] disabled:opacity-40 text-[#0B0F14] px-5 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 whitespace-nowrap transition-all"
+              >
+                <IconSparkles />
+                <span>{generatingCustom ? 'מייצר סצנה חדשה...' : 'צור סצנה מותאמת'}</span>
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="py-20 text-center space-y-4 bg-[#11171F] border border-[#1E2732] rounded-2xl">
+                <div className="w-10 h-10 border-4 border-[#B2FF05] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div className="text-sm font-bold text-white">מייצר 3 סצנות ריאליסטיות בסגנון דוקו-רחוב עבור {company.name}...</div>
+                <p className="text-xs text-gray-400">משלב לוגו מותג, מטבע מקומי של {company.country}, דגל המדינה ואלמנט הפרעה (כ-10 שניות)</p>
+              </div>
+            ) : error ? (
+              <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-3">
+                <div className="text-sm font-bold text-red-300">{error}</div>
+                <button
+                  onClick={() => generateScenes()}
+                  className="bg-[#161E27] hover:bg-[#1E2732] text-white px-4 py-2 rounded-xl text-xs font-bold"
+                >
+                  נסה שוב
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {images.map((imgSrc, idx) => (
+                  <div key={idx} className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                    <div className="relative aspect-video bg-black">
+                      <img src={imgSrc} alt={`Disruptive Ad ${idx + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-3.5 flex items-center justify-between border-t border-[#1E2732]">
+                      <span className="text-xs font-bold text-gray-300">קונספט הפרעה #{idx + 1}</span>
+                      <button
+                        onClick={() => handleDownload(imgSrc, idx)}
+                        className="bg-[#1A232E] hover:bg-[#B2FF05] hover:text-black text-[#B2FF05] border border-[#B2FF05]/30 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <IconDownload />
+                        <span>הורד PNG</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     function App() {
       const [data, setData] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -195,8 +363,8 @@
       const [selectedCountry, setSelectedCountry] = useState('הכל');
       const [selectedStage, setSelectedStage] = useState('הכל');
       const [selectedCompany, setSelectedCompany] = useState(null);
+      const [activeDisruptiveCompany, setActiveDisruptiveCompany] = useState(null);
 
-      // ניהול חלונית רענון מוגן PIN
       const [showPinModal, setShowPinModal] = useState(false);
       const [pinInput, setPinInput] = useState('');
       const [triggerStatus, setTriggerStatus] = useState({ state: 'idle', msg: '' });
@@ -302,7 +470,6 @@
           });
           setPinInput('');
 
-          // רענון אוטומטי של הטבלה לאחר 95 שניות
           setTimeout(() => {
             fetchData();
             setTriggerStatus({ state: 'done', msg: 'הנתונים עודכנו בהצלחה!' });
@@ -315,23 +482,6 @@
         } catch (err) {
           setTriggerStatus({ state: 'error', msg: `שגיאת תקשורת: ${err.message}` });
         }
-      };
-
-      const buildChatGptBannerUrl = (company) => {
-        const promptText = `אני צריך שתעצב עבורי קונספט וקופי מלא לבאנר פרסומי ממוקד המרה (וגם תייצר תמונה מתאימה לבאנר במידות 1200x628).
-
-פרטי החברה:
-- שם החברה: ${company.name} (${company.country} • ${company.sector})
-- סטטוס ושווי: ${company.status} | שווי: ${company.valuation || 'לא פורסם'}
-- הבסיס העובדתי לקהל: ${company.audience_evidence}
-- פרופיל קהל היעד: ${company.target_audience}
-- כיוון קריאייטיב מומלץ: ${company.creative_idea}
-
-אנא ספק:
-1. 3 וריאציות של כותרת ראשית (Headline) + טקסט משני + כפתור הנעה לפעולה (CTA).
-2. הנחיה ויזואלית מדויקת ויצירת תמונת הבאנר הפרסומי בסגנון פיננסי-טכנולוגי מודרני ונקי.`;
-
-        return `https://chatgpt.com/?q=${encodeURIComponent(promptText)}`;
       };
 
       const stageTooltips = {
@@ -358,7 +508,6 @@
                 </p>
               </div>
 
-              {/* באנר עדכון אחרון + כפתור רענון מוגן */}
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="bg-[#131A22] border border-[#232D36] px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 text-gray-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
@@ -443,12 +592,12 @@
                       <th className="py-4 px-3 font-medium whitespace-nowrap">מדינה</th>
                       <th className="py-4 px-3 font-medium min-w-[120px]">סקטור</th>
                       <th className="py-4 px-3 font-medium text-center whitespace-nowrap">
-                        <Tooltip text="סיווג החברה: טרנדיות, מומנטום, לקראת הנפקה (דיווח רשמי בלבד), אחרי הנפקה או חברות עוגן חזקות." position="bottom">
+                        <Tooltip text="סיווג החברה" position="bottom">
                           שלב
                         </Tooltip>
                       </th>
                       <th className="py-4 px-3 font-medium whitespace-nowrap">
-                        <Tooltip text="מדד משוקלל (1-100): 35% נוכחות פרסומית ומודעות השקעה ברשת, 25% מוכרות מותג ברחוב, 25% נחשקות וסמל סטטוס, ו-15% מומנטום חדשותי ו-Google Trends." position="bottom">
+                        <Tooltip text="מדד משוקלל (1-100)" position="bottom">
                           עניין ומומנטום ↓
                         </Tooltip>
                       </th>
@@ -461,15 +610,11 @@
                   <tbody className="divide-y divide-[#1E2732]/60 text-sm">
                     {loading ? (
                       <tr>
-                        <td colSpan="9" className="py-16 text-center text-gray-500">
-                          טוען נתוני מחקר...
-                        </td>
+                        <td colSpan="9" className="py-16 text-center text-gray-500">טוען נתוני מחקר...</td>
                       </tr>
                     ) : filteredData.length === 0 ? (
                       <tr>
-                        <td colSpan="9" className="py-16 text-center text-gray-500">
-                          לא נמצאו חברות התואמות לסינון הנוכחי.
-                        </td>
+                        <td colSpan="9" className="py-16 text-center text-gray-500">לא נמצאו חברות.</td>
                       </tr>
                     ) : (
                       filteredData.map((company, idx) => {
@@ -491,10 +636,7 @@
                                       {company.name}
                                     </span>
                                     {nonTraded && (
-                                      <span
-                                        title="חברה פרטית ללא מניות סחירות וללא דיווח רשמי על הנפקה קרובה"
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#18212C] text-gray-400 border border-[#2A3644] whitespace-nowrap"
-                                      >
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#18212C] text-gray-400 border border-[#2A3644] whitespace-nowrap">
                                         <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
                                         לא נסחרת
                                       </span>
@@ -502,7 +644,7 @@
                                   </div>
                                   <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
                                     <span className="text-emerald-400">↗</span>
-                                    <span>{company.status || 'פרטית • מקור מקומי (לא נסחרת)'}</span>
+                                    <span>{company.status || 'פרטית • מקור מקומי'}</span>
                                   </div>
                                 </div>
                               </div>
@@ -526,15 +668,9 @@
                               </div>
                             </td>
                             <td className="py-4 px-3 text-gray-300 text-xs leading-snug">{company.driver_type}</td>
-                            <td className="py-4 px-3 text-gray-400 text-xs max-w-[180px] truncate" title={company.catalyst}>
-                              {company.catalyst || 'פעילות צומחת בשוק המקומי'}
-                            </td>
-                            <td className="py-4 px-3 text-gray-300 font-mono text-xs max-w-[200px] leading-snug break-words">
-                              {company.raised || 'לא פורסם'}
-                            </td>
-                            <td className="py-4 px-4 font-bold text-white font-mono text-xs max-w-[200px] leading-snug break-words">
-                              {company.valuation || 'לא פורסם'}
-                            </td>
+                            <td className="py-4 px-3 text-gray-400 text-xs max-w-[180px] truncate">{company.catalyst}</td>
+                            <td className="py-4 px-3 text-gray-300 font-mono text-xs max-w-[200px] leading-snug">{company.raised || 'לא פורסם'}</td>
+                            <td className="py-4 px-4 font-bold text-white font-mono text-xs max-w-[200px] leading-snug">{company.valuation || 'לא פורסם'}</td>
                           </tr>
                         );
                       })
@@ -545,7 +681,6 @@
             </div>
           </main>
 
-          {/* חלונית הזנת PIN לרענון מוגן */}
           {showPinModal && (
             <div 
               className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -556,14 +691,14 @@
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-[#1E2732] pb-3">
-                  <h3 className="text-base font-bold text-white">הפעלת סוכן מחקר AI (מוגן)</h3>
+                  <h3 className="text-base font-bold text-white">הפעלת סוכן מחקר AI</h3>
                   <button onClick={() => setShowPinModal(false)} className="text-gray-400 hover:text-white">
                     <IconClose />
                   </button>
                 </div>
 
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  הזן את קוד הגישה (PIN) כדי להפעיל סריקה חיה של כל 9 המדינות. כדי למנוע עלויות מיותרות, המערכת מאפשרת רענון יזום פעם ב-12 שעות בנוסף לעדכון האוטומטי בכל יום שני.
+                  הזן את קוד הגישה (PIN) כדי להפעיל סריקה חיה של כל 9 המדינות.
                 </p>
 
                 <form onSubmit={handleTriggerRefresh} className="space-y-4">
@@ -572,45 +707,30 @@
                     value={pinInput}
                     onChange={e => setPinInput(e.target.value)}
                     placeholder="הקלד קוד גישה (PIN)..."
-                    className="w-full bg-[#131A22] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-sm text-white outline-none text-center tracking-widest font-mono"
+                    className="w-full bg-[#131A22] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-sm text-white outline-none text-center font-mono"
                     autoFocus
                   />
 
                   {triggerStatus.msg && (
                     <div className={`p-3 rounded-xl text-xs leading-relaxed border ${
-                      triggerStatus.state === 'error'
-                        ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                        : 'bg-[#B2FF05]/10 border-[#B2FF05]/30 text-[#B2FF05]'
+                      triggerStatus.state === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-[#B2FF05]/10 border-[#B2FF05]/30 text-[#B2FF05]'
                     }`}>
                       {triggerStatus.msg}
                     </div>
                   )}
 
                   <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowPinModal(false)}
-                      className="px-4 py-2 rounded-xl text-xs text-gray-400 hover:text-white bg-[#161E27]"
-                    >
-                      סגור
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={triggerStatus.state === 'loading' || triggerStatus.state === 'running'}
-                      className="bg-[#B2FF05] hover:bg-[#a1e604] disabled:opacity-50 text-[#0B0F14] px-5 py-2 rounded-xl text-xs font-bold transition-all"
-                    >
-                      {triggerStatus.state === 'loading' ? 'מאמת...' : 'הפעל סריקה'}
-                    </button>
+                    <button type="button" onClick={() => setShowPinModal(false)} className="px-4 py-2 rounded-xl text-xs text-gray-400 bg-[#161E27]">סגור</button>
+                    <button type="submit" disabled={triggerStatus.state === 'loading' || triggerStatus.state === 'running'} className="bg-[#B2FF05] text-[#0B0F14] px-5 py-2 rounded-xl text-xs font-bold font-black">הפעל סריקה</button>
                   </div>
                 </form>
               </div>
             </div>
           )}
 
-          {/* כרטיס חברה מפורט */}
           {selectedCompany && (
             <div 
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+              className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
               onClick={() => setSelectedCompany(null)}
             >
               <div 
@@ -618,157 +738,114 @@
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-start justify-between border-b border-[#1E2732] pb-4">
-                  <button 
-                    onClick={() => setSelectedCompany(null)}
-                    className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-[#161E27] transition-colors"
-                  >
-                    <IconClose />
-                  </button>
+                  <button onClick={() => setSelectedCompany(null)} className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-[#161E27]"><IconClose /></button>
 
                   <div className="text-left">
-                    <div className="text-xs text-gray-400 mb-1">
-                      פעילות ב{selectedCompany.country} • {selectedCompany.sector}
-                    </div>
-                    <div className="flex items-center justify-end gap-2.5 flex-wrap">
+                    <div className="text-xs text-gray-400 mb-1">פעילות ב{selectedCompany.country} • {selectedCompany.sector}</div>
+                    <div className="flex items-center justify-end gap-2.5 flex-wrap font-black">
                       {isNonTraded(selectedCompany) && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#18212C] text-gray-400 border border-[#2A3644]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                          לא נסחרת
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>לא נסחרת
                         </span>
                       )}
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(selectedCompany.stage)}`}>
-                        {selectedCompany.stage}
-                      </span>
-                      <span className="bg-[#B2FF05] text-[#0B0F14] px-3 py-0.5 rounded-lg text-xl font-black tracking-tight">
-                        {selectedCompany.name}
-                      </span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStageBadge(selectedCompany.stage)}`}>{selectedCompany.stage}</span>
+                      <span className="bg-[#B2FF05] text-[#0B0F14] px-3 py-0.5 rounded-lg text-xl font-black">{selectedCompany.name}</span>
                     </div>
-                    <div className="text-xs text-gray-300 mt-1.5 font-mono">
-                      {selectedCompany.status || 'פרטית (לא נסחרת)'}
-                    </div>
+                    <div className="text-xs text-gray-300 mt-1.5 font-mono">{selectedCompany.status}</div>
                   </div>
                 </div>
 
                 <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                    <IconBuilding />
-                    <span>מה היא עושה</span>
-                  </div>
-                  <p className="text-sm text-gray-200 leading-relaxed">
-                    {selectedCompany.description}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 font-medium"><IconBuilding /><span>מה היא עושה</span></div>
+                  <p className="text-sm text-gray-200 leading-relaxed">{selectedCompany.description}</p>
                 </div>
 
-                <div className="bg-[#11171F] border border-[#B2FF05]/50 rounded-xl p-4 space-y-1.5 shadow-[0_0_20px_rgba(178,255,5,0.05)]">
-                  <div className="flex items-center gap-2 text-xs text-[#B2FF05] font-bold">
-                    <IconTrendUp />
-                    <span>למה שווה להשקיע</span>
-                  </div>
-                  <p className="text-sm text-white leading-relaxed">
-                    {selectedCompany.investment_thesis}
-                  </p>
+                <div className="bg-[#11171F] border border-[#B2FF05]/50 rounded-xl p-4 space-y-1.5 shadow-[0_0_20px_rgba(178,255,5,0.05)] font-bold">
+                  <div className="flex items-center gap-2 text-xs text-[#B2FF05]"><IconTrendUp /><span>למה שווה להשקיע</span></div>
+                  <p className="text-sm text-white leading-relaxed">{selectedCompany.investment_thesis}</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
-                    <div className="text-xs text-gray-400">הון שגויס (כולל שנה וסוג)</div>
-                    <div className="text-sm font-black text-white mt-1.5 font-mono leading-relaxed">{selectedCompany.raised || 'לא פורסם'}</div>
+                    <div className="text-xs text-gray-400">הון שגויס</div>
+                    <div className="text-sm font-black text-white mt-1.5 font-mono">{selectedCompany.raised || 'לא פורסם'}</div>
                   </div>
                   <div className="bg-[#11171F] border border-[#1E2732] p-4 rounded-xl">
-                    <div className="text-xs text-gray-400">שווי מוערך (כולל שנה)</div>
-                    <div className="text-sm font-black text-[#B2FF05] mt-1.5 font-mono leading-relaxed">{selectedCompany.valuation || 'לא פורסם'}</div>
+                    <div className="text-xs text-gray-400">שווי מוערך</div>
+                    <div className="text-sm font-black text-[#B2FF05] mt-1.5 font-mono">{selectedCompany.valuation || 'לא פורסם'}</div>
                   </div>
                 </div>
 
-                {/* מדד משוקלל ופירוק */}
                 <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-2">
-                  <div className="text-xs text-gray-400">מדד משוקלל (35% פרסום ו-Ads • 25% מוכרות • 25% סטטוס • 15% חדשות)</div>
+                  <div className="text-xs text-gray-400">מדד משוקלל</div>
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-300 font-medium">עניין ומומנטום</span>
+                    <span className="text-xs text-gray-300">עניין ומומנטום</span>
                     <span className="text-sm font-bold text-white">{selectedCompany.interest_num}</span>
                     <div className="flex-1 h-2 bg-[#1E2732] rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#B2FF05] rounded-full" 
-                        style={{ width: `${Math.min(100, selectedCompany.interest_num)}%` }}
-                      ></div>
+                      <div className="h-full bg-[#B2FF05]" style={{ width: `${Math.min(100, selectedCompany.interest_num)}%` }}></div>
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 pt-1">{selectedCompany.score_breakdown}</p>
                 </div>
 
-                {/* ניתוח קהל יעד מבוסס ראיות */}
                 <div className="bg-[#11171F] border border-sky-500/30 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-sky-400 font-bold">
-                    <IconUsers />
-                    <span>ניתוח קהל יעד (מבוסס נתונים)</span>
-                  </div>
+                  <div className="flex items-center gap-2 text-xs text-sky-400 font-bold"><IconUsers /><span>ניתוח קהל יעד (מבוסס נתונים)</span></div>
                   <div className="text-[11px] text-gray-400 bg-[#0E141B] p-2.5 rounded-lg border border-[#1E2732]">
-                    <span className="text-gray-300 font-bold">בסיס עובדתי: </span>
-                    {selectedCompany.audience_evidence}
+                    <span className="text-gray-300 font-bold">בסיס עובדתי: </span>{selectedCompany.audience_evidence}
                   </div>
-                  <p className="text-sm text-gray-200 leading-relaxed">
-                    {selectedCompany.target_audience}
-                  </p>
+                  <p className="text-sm text-gray-200 leading-relaxed">{selectedCompany.target_audience}</p>
                 </div>
 
-                {/* הצעה לקריאייטיב + כפתור להפקה ב-ChatGPT */}
-                <div className="bg-[#11171F] border border-purple-500/30 rounded-xl p-4 space-y-3">
+                {/* שני מסלולי הקריאייטיב במקביל */}
+                <div className="bg-[#11171F] border border-purple-500/40 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-purple-300 font-bold">
                       <IconSparkles />
-                      <span>הצעה לקריאייטיב לבאנר פרסומי</span>
+                      <span>הצעת קריאייטיב וייצור באנרים</span>
                     </div>
 
-                    <a
-                      href={buildChatGptBannerUrl(selectedCompany)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-purple-600 hover:bg-purple-500 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(168,85,247,0.25)]"
-                    >
-                      <span>צור באנר ב-ChatGPT</span>
-                      <IconExternal />
-                    </a>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href={buildChatGptMoodBoardUrl(selectedCompany)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <IconGrid />
+                        <span>קולאז' 4 באנרים (ChatGPT)</span>
+                      </a>
+
+                      <button
+                        onClick={() => setActiveDisruptiveCompany(selectedCompany)}
+                        className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-3.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(178,255,5,0.2)]"
+                      >
+                        <IconSparkles />
+                        <span>סצנות "הפרעה" AI (פנימי)</span>
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-200 leading-relaxed">
-                    {selectedCompany.creative_idea}
-                  </p>
+                  <p className="text-sm text-gray-200 leading-relaxed">{selectedCompany.creative_idea}</p>
                 </div>
 
                 <div className="bg-[#11171F] border border-[#1E2732] rounded-xl p-4 space-y-2.5">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                      <IconNews />
-                      <span>מה מדווחים עליה</span>
-                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 font-medium"><IconNews /><span>מה מדווחים עליה</span></div>
                     <div className="flex items-center gap-3">
-                      <a 
-                        href={`https://www.google.com/search?q=${encodeURIComponent(`"${selectedCompany.name}" ${selectedCompany.country} funding valuation`)}`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-gray-300 hover:text-[#B2FF05] flex items-center gap-1 bg-[#18212C] px-2.5 py-1 rounded-lg border border-[#2A3644] transition-colors"
-                      >
-                        <IconSearch />
-                        <span>אמת נתונים בגוגל</span>
-                      </a>
-                      {selectedCompany.source_url && (
-                        <a 
-                          href={selectedCompany.source_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-bold"
-                        >
-                          <span>לכתבת המקור</span>
-                          <IconExternal />
-                        </a>
-                      )}
+                      <a href={`https://www.google.com/search?q=${encodeURIComponent(`"${selectedCompany.name}" ${selectedCompany.country} funding valuation`)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-gray-300 hover:text-[#B2FF05] flex items-center gap-1 bg-[#18212C] px-2.5 py-1 rounded-lg border border-[#2A3644]"><IconSearch /><span>אמת נתונים בגוגל</span></a>
+                      {selectedCompany.source_url && <a href={selectedCompany.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#B2FF05] hover:underline flex items-center gap-1 font-bold"><span>לכתבת המקור</span><IconExternal /></a>}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-200 leading-relaxed">
-                    {selectedCompany.catalyst || 'פעילות צומחת בשוק המקומי.'}
-                  </p>
+                  <p className="text-sm text-gray-200 leading-relaxed">{selectedCompany.catalyst}</p>
                 </div>
               </div>
             </div>
+          )}
+
+          {activeDisruptiveCompany && (
+            <DisruptiveStudio 
+              company={activeDisruptiveCompany} 
+              onClose={() => setActiveDisruptiveCompany(null)} 
+            />
           )}
         </div>
       );
