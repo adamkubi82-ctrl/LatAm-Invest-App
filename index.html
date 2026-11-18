@@ -94,6 +94,11 @@
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
     );
+    const IconCopy = () => (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+    );
 
     const COUNTRIES = [
       { id: 'הכל', label: 'כל המדינות' },
@@ -223,11 +228,12 @@ OUTPUT INSTRUCTIONS:
     };
 
     function DisruptiveStudio({ company, onClose }) {
-      const [images, setImages] = useState([]);
+      const [ads, setAds] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
       const [customTwist, setCustomTwist] = useState('');
       const [generatingCustom, setGeneratingCustom] = useState(false);
+      const [copiedIdx, setCopiedIdx] = useState(null);
 
       const generateScenes = async (twist = '') => {
         if (twist) {
@@ -253,14 +259,14 @@ OUTPUT INSTRUCTIONS:
 
           const result = await res.json();
           if (!res.ok) {
-            throw new Error(result.error || 'שגיאה ביצירת התמונות');
+            throw new Error(result.error || 'שגיאה ביצירת מודעות הטאבולה');
           }
 
-          if (twist && result.images?.length > 0) {
-            setImages(prev => [result.images[0], ...prev]);
+          if (twist && result.ads?.length > 0) {
+            setAds(prev => [result.ads[0], ...prev]);
             setCustomTwist('');
           } else {
-            setImages(result.images || []);
+            setAds(result.ads || []);
           }
         } catch (err) {
           setError(err.message);
@@ -277,10 +283,20 @@ OUTPUT INSTRUCTIONS:
       const handleDownload = (dataUrl, index) => {
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `${company.name.replace(/\s+/g, '_')}_disruptive_${index + 1}.png`;
+        link.download = `${company.name.replace(/\s+/g, '_')}_taboola_${index + 1}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+      };
+
+      const handleHeadlineChange = (index, newText) => {
+        setAds(prev => prev.map((item, i) => i === index ? { ...item, headline_es: newText } : item));
+      };
+
+      const handleCopyHeadline = (text, index) => {
+        navigator.clipboard.writeText(text);
+        setCopiedIdx(index);
+        setTimeout(() => setCopiedIdx(null), 2000);
       };
 
       return (
@@ -295,9 +311,9 @@ OUTPUT INSTRUCTIONS:
               </button>
 
               <div className="text-left">
-                <div className="text-xs text-[#B2FF05] font-black uppercase tracking-wider mb-0.5">DISRUPTIVE AI AD STUDIO</div>
-                <h2 className="text-lg font-black text-white">סצנות "הפרעה" ריאליסטיות עבור {company.name} ({company.country})</h2>
-                <p className="text-xs text-gray-400">שילוב מותג, שטרות כסף מקומיים, דגל המדינה ואלמנט הפרעה מפתיע</p>
+                <div className="text-xs text-[#B2FF05] font-black uppercase tracking-wider mb-0.5">TABOOLA NATIVE AD STUDIO</div>
+                <h2 className="text-lg font-black text-white">יחידות פרסום שלמות עבור {company.name} ({company.country})</h2>
+                <p className="text-xs text-gray-400">תמונת הפרעה לא-מלוקקת + כותרת Taboola מתחת לתמונה (עד 99 תווים, עריכה חיה)</p>
               </div>
             </div>
 
@@ -306,7 +322,7 @@ OUTPUT INSTRUCTIONS:
                 type="text"
                 value={customTwist}
                 onChange={e => setCustomTwist(e.target.value)}
-                placeholder={`הקלד רעיון להפרעה משלך (למשל: "שליח על אופנוע עם תיק ${company.name} עוצר ליד שוק מקומי מלא שטרות כסף ותוכי על הכידון")...`}
+                placeholder={`הקלד רעיון לסצנת הפרעה חדשה (למשל: "נהג מונית בודק את האפליקציה של ${company.name} כשבמושב האחורי יושב תוכי ליד כמה שטרות")...`}
                 className="flex-1 w-full bg-[#0B0F14] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-xs text-white outline-none"
               />
               <button
@@ -315,15 +331,15 @@ OUTPUT INSTRUCTIONS:
                 className="w-full sm:w-auto bg-[#B2FF05] hover:bg-[#a1e604] disabled:opacity-40 text-[#0B0F14] px-5 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 whitespace-nowrap transition-all"
               >
                 <IconSparkles />
-                <span>{generatingCustom ? 'מייצר סצנה חדשה...' : 'צור סצנה מותאמת'}</span>
+                <span>{generatingCustom ? 'מייצר פוסט חדש...' : 'צור פוסט מותאם'}</span>
               </button>
             </div>
 
             {loading ? (
               <div className="py-20 text-center space-y-4 bg-[#11171F] border border-[#1E2732] rounded-2xl">
                 <div className="w-10 h-10 border-4 border-[#B2FF05] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="text-sm font-bold text-white">מייצר 3 סצנות ריאליסטיות בסגנון דוקו-רחוב עבור {company.name}...</div>
-                <p className="text-xs text-gray-400">משלב לוגו מותג, מטבע מקומי של {company.country}, דגל המדינה ואלמנט הפרעה (כ-10 שניות)</p>
+                <div className="text-sm font-bold text-white">מייצר 3 יחידות Taboola מלאות עבור {company.name}...</div>
+                <p className="text-xs text-gray-400">צילומי סמארטפון אותנטיים ללא פילטרים + כותרות המרה קצרות בספרדית מקומית</p>
               </div>
             ) : error ? (
               <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-2xl text-center space-y-3">
@@ -337,23 +353,66 @@ OUTPUT INSTRUCTIONS:
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {images.map((imgSrc, idx) => (
-                  <div key={idx} className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-hidden flex flex-col shadow-xl">
-                    <div className="relative aspect-video bg-black">
-                      <img src={imgSrc} alt={`Disruptive Ad ${idx + 1}`} className="w-full h-full object-cover" />
+                {ads.map((ad, idx) => {
+                  const charCount = (ad.headline_es || '').length;
+                  const isOverLimit = charCount > 99;
+
+                  return (
+                    <div key={idx} className="bg-[#11171F] border border-[#1E2732] rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                      {/* תמונת הטאבולה (ללא טקסט עליה) */}
+                      <div className="relative aspect-video bg-black">
+                        <img src={ad.image} alt={`Taboola Ad ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute top-2.5 right-2.5 bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-md border border-white/10">
+                          TABOOLA UNIT #{idx + 1}
+                        </span>
+                      </div>
+
+                      {/* אזור הכותרת מתחת לתמונה - בדיוק כמו בפיד של Taboola */}
+                      <div className="p-4 flex-1 flex flex-col justify-between space-y-3 bg-[#141B24]">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-gray-400 font-medium">כותרת מתחת לתמונה (ניתנת לעריכה):</span>
+                            <span className={`font-mono font-bold px-2 py-0.5 rounded ${
+                              isOverLimit ? 'bg-red-500/20 text-red-300' : 'bg-[#B2FF05]/15 text-[#B2FF05]'
+                            }`}>
+                              {charCount}/99 תווים
+                            </span>
+                          </div>
+
+                          <textarea
+                            dir="ltr"
+                            rows="2"
+                            value={ad.headline_es}
+                            onChange={e => handleHeadlineChange(idx, e.target.value)}
+                            className="w-full bg-[#0B0F14] border border-[#2A3644] focus:border-[#B2FF05] rounded-xl p-2.5 text-sm font-bold text-white leading-snug outline-none resize-none text-left"
+                          />
+
+                          <div className="text-xs text-gray-400 bg-[#0E131A] p-2 rounded-lg border border-[#1E2732] leading-relaxed">
+                            <span className="text-gray-500 font-bold">תרגום: </span>{ad.headline_he}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#1E2732]">
+                          <button
+                            onClick={() => handleCopyHeadline(ad.headline_es, idx)}
+                            className="flex-1 bg-[#1A232E] hover:bg-[#232F3E] text-gray-200 border border-[#2D3A4B] py-1.5 px-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                          >
+                            <IconCopy />
+                            <span>{copiedIdx === idx ? 'הועתק!' : 'העתק כותרת'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleDownload(ad.image, idx)}
+                            className="flex-1 bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] py-1.5 px-2.5 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all"
+                          >
+                            <IconDownload />
+                            <span>הורד תמונה</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-3.5 flex items-center justify-between border-t border-[#1E2732]">
-                      <span className="text-xs font-bold text-gray-300">קונספט הפרעה #{idx + 1}</span>
-                      <button
-                        onClick={() => handleDownload(imgSrc, idx)}
-                        className="bg-[#1A232E] hover:bg-[#B2FF05] hover:text-black text-[#B2FF05] border border-[#B2FF05]/30 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
-                      >
-                        <IconDownload />
-                        <span>הורד PNG</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -805,7 +864,7 @@ OUTPUT INSTRUCTIONS:
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2 text-xs text-purple-300 font-bold">
                       <IconSparkles />
-                      <span>הצעת קריאייטיב וייצור באנרים</span>
+                      <span>הצעת קריאייטיב וייצור מודעות</span>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
@@ -824,7 +883,7 @@ OUTPUT INSTRUCTIONS:
                         className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-3.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(178,255,5,0.2)]"
                       >
                         <IconSparkles />
-                        <span>סצנות "הפרעה" AI (פנימי)</span>
+                        <span>פוסטים לטאבולה + תמונות הפרעה</span>
                       </button>
                     </div>
                   </div>
