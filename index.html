@@ -29,7 +29,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useRef } = React;
 
     const supabaseUrl = 'https://oikogvyjchqjwxfembcd.supabase.co';
     const supabaseKey = 'sb_publishable_wfndEaEpiSiJ0ogGOmqF8g_XGvOx1h4';
@@ -616,6 +616,7 @@ OUTPUT INSTRUCTIONS:
     function App() {
       const [data, setData] = useState([]);
       const [loading, setLoading] = useState(true);
+      const [lastUpdatedRaw, setLastUpdatedRaw] = useState(null);
       const [lastUpdatedDisplay, setLastUpdatedDisplay] = useState(null);
       const [selectedCountry, setSelectedCountry] = useState('הכל');
       const [selectedStage, setSelectedStage] = useState('הכל');
@@ -632,9 +633,27 @@ OUTPUT INSTRUCTIONS:
       const [showPinModal, setShowPinModal] = useState(false);
       const [pinInput, setPinInput] = useState('');
       const [triggerStatus, setTriggerStatus] = useState({ state: 'idle', msg: '' });
+      const [elapsedSeconds, setElapsedSeconds] = useState(0);
+      const pollIntervalRef = useRef(null);
+      const timerIntervalRef = useRef(null);
 
-      async function fetchData() {
-        setLoading(true);
+      const stopPolling = () => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+      };
+
+      useEffect(() => {
+        return () => stopPolling();
+      }, []);
+
+      async function fetchData(silent = false) {
+        if (!silent) setLoading(true);
         try {
           const response = await fetch(`${supabaseUrl}/rest/v1/latam_companies?select=*&order=id.desc`, {
             headers: {
@@ -645,14 +664,16 @@ OUTPUT INSTRUCTIONS:
           const dbData = response.ok ? await response.json() : [];
           const fetched = Array.isArray(dbData) ? dbData : [];
 
+          let newestTimestamp = null;
           if (fetched.length > 0) {
-            const newest = fetched.reduce((acc, curr) => {
+            newestTimestamp = fetched.reduce((acc, curr) => {
               const dateVal = curr.updated_at || curr.created_at;
               if (!dateVal) return acc;
               return new Date(dateVal) > new Date(acc) ? dateVal : acc;
             }, fetched[0].updated_at || fetched[0].created_at || new Date().toISOString());
 
-            const dObj = new Date(newest);
+            setLastUpdatedRaw(newestTimestamp);
+            const dObj = new Date(newestTimestamp);
             const dateStr = dObj.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
             const timeStr = dObj.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
             setLastUpdatedDisplay(`${dateStr} • ${timeStr}`);
@@ -685,10 +706,12 @@ OUTPUT INSTRUCTIONS:
             });
 
           setData(enrichedDB);
+          return newestTimestamp;
         } catch (err) {
           console.error("Fetch error:", err);
+          return null;
         } finally {
-          setLoading(false);
+          if (!silent) setLoading(false);
         }
       }
 
@@ -764,7 +787,8 @@ OUTPUT INSTRUCTIONS:
         e.preventDefault();
         if (!pinInput.trim()) return;
 
-        setTriggerStatus({ state: 'loading', msg: 'מאמת קוד ומזניק סוכן מחקר...' });
+        const baselineTimestamp = lastUpdatedRaw;
+        setTriggerStatus({ state: 'loading', msg: 'מאמת קוד ומזניק את סוכן החיפוש החי...' });
 
         try {
           const res = await fetch(`${supabaseUrl}/functions/v1/trigger-scraper`, {
@@ -780,28 +804,54 @@ OUTPUT INSTRUCTIONS:
           const result = await res.json();
 
           if (!res.ok) {
-            setTriggerStatus({ state: 'error', msg: result.error || 'שגיאה בהפעלת הסוכן.' });
+            setTriggerStatus({ state: 'error', msg: result.error || 'קוד שגוי או שגיאה בהפעלת הסוכן.' });
             return;
           }
 
+          setPinInput('');
+          setElapsedSeconds(0);
           setTriggerStatus({
             state: 'running',
-            msg: 'הסוכן פעיל וסורק כעת 9 מדינות! הטבלה תתרענן אוטומטית בעוד כ-90 שניות...'
+            msg: 'הסוכן סורק כעת בלייב את Google Search עבור 9 מדינות. החלון יתעדכן אוטומטית ברגע שהסריקה תסתיים.'
           });
-          setPinInput('');
 
-          setTimeout(() => {
-            fetchData();
-            setTriggerStatus({ state: 'done', msg: 'הנתונים עודכנו בהצלחה!' });
-            setTimeout(() => {
-              setShowPinModal(false);
-              setTriggerStatus({ state: 'idle', msg: '' });
-            }, 3000);
-          }, 95000);
+          stopPolling();
+
+          timerIntervalRef.current = setInterval(() => {
+            setElapsedSeconds(prev => prev + 1);
+          }, 1000);
+
+          // בדיקה חיה מול Supabase כל 10 שניות עד שמתקבלים נתונים חדשים
+          let checks = 0;
+          pollIntervalRef.current = setInterval(async () => {
+            checks += 1;
+            const latestTs = await fetchData(true);
+            if (latestTs && baselineTimestamp && new Date(latestTs) > new Date(baselineTimestamp)) {
+              stopPolling();
+              setTriggerStatus({
+                state: 'done',
+                msg: 'הסריקה הושלמה והטבלה עודכנה בנתונים חיים חדשים!'
+              });
+            } else if (checks >= 24) {
+              // עצירה אחרי 4 דקות למניעת המתנה אינסופית
+              stopPolling();
+              setTriggerStatus({
+                state: 'timeout',
+                msg: 'הסריקה אורכת מעט יותר מהרגיל ברקע. ניתן לסגור ולרענן בעוד דקה.'
+              });
+            }
+          }, 10000);
 
         } catch (err) {
           setTriggerStatus({ state: 'error', msg: `שגיאת תקשורת: ${err.message}` });
         }
+      };
+
+      const handleCancelOrResetModal = () => {
+        stopPolling();
+        setTriggerStatus({ state: 'idle', msg: '' });
+        setPinInput('');
+        setShowPinModal(false);
       };
 
       const stageTooltips = {
@@ -810,6 +860,12 @@ OUTPUT INSTRUCTIONS:
         'לקראת הנפקה': 'חברות פרטיות שקיים לגביהן דיווח רשמי ופומבי על הגשת תשקיף או תכנון IPO קרוב.',
         'אחרי הנפקה': 'חברות טכנולוגיה ופינטק שהונפקו בבורסה ב-3 השנים האחרונות.',
         'חזקות': 'חברות עוגן מבוססות ובורסאיות ותיקות עם נתח שוק משמעותי.'
+      };
+
+      const formatTimer = (sec) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
       };
 
       return (
@@ -838,13 +894,19 @@ OUTPUT INSTRUCTIONS:
 
                 <button 
                   onClick={() => {
-                    setTriggerStatus({ state: 'idle', msg: '' });
+                    if (triggerStatus.state !== 'running' && triggerStatus.state !== 'loading') {
+                      setTriggerStatus({ state: 'idle', msg: '' });
+                    }
                     setShowPinModal(true);
                   }}
                   className="bg-[#B2FF05] hover:bg-[#a1e604] text-[#0B0F14] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(178,255,5,0.2)]"
                 >
-                  <IconRefresh spin={triggerStatus.state === 'running'} />
-                  <span>{triggerStatus.state === 'running' ? 'הסוכן סורק ברקע...' : 'רענן נתונים עכשיו'}</span>
+                  <IconRefresh spin={triggerStatus.state === 'running' || triggerStatus.state === 'loading'} />
+                  <span>
+                    {triggerStatus.state === 'running' 
+                      ? `הסוכן סורק ברקע (${formatTimer(elapsedSeconds)})...` 
+                      : 'רענן נתונים עכשיו'}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1097,49 +1159,119 @@ OUTPUT INSTRUCTIONS:
             </div>
           </main>
 
+          {/* מודאל הפעלת סוכן מחקר — עם מצב ריצה ייעודי ללא שדה קוד וכפתור הפעלה */}
           {showPinModal && (
             <div 
               className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={() => setShowPinModal(false)}
+              onClick={() => {
+                if (triggerStatus.state !== 'running' && triggerStatus.state !== 'loading') {
+                  setShowPinModal(false);
+                }
+              }}
             >
               <div 
-                className="bg-[#0E131A] border border-[#2A3644] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+                className="bg-[#0E131A] border border-[#2A3644] rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-[#1E2732] pb-3">
-                  <h3 className="text-base font-bold text-white">הפעלת סוכן מחקר AI</h3>
+                  <h3 className="text-base font-bold text-white">
+                    {triggerStatus.state === 'running' || triggerStatus.state === 'loading'
+                      ? 'סוכן המחקר סורק כעת ברשת'
+                      : triggerStatus.state === 'done'
+                      ? 'העדכון הושלם בהצלחה'
+                      : 'הפעלת סוכן מחקר AI'}
+                  </h3>
                   <button onClick={() => setShowPinModal(false)} className="text-gray-400 hover:text-white">
                     <IconClose />
                   </button>
                 </div>
 
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  הזן את קוד הגישה (PIN) כדי להפעיל סריקה חיה של כל 9 המדינות.
-                </p>
+                {/* מצב 1: טופס הזנת PIN (מוצג רק לפני ההפעלה או אם הוקלד קוד שגוי) */}
+                {(triggerStatus.state === 'idle' || triggerStatus.state === 'error') && (
+                  <>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      הזן את קוד הגישה (PIN) כדי להפעיל סריקה חיה של כל 9 המדינות בגוגל.
+                    </p>
 
-                <form onSubmit={handleTriggerRefresh} className="space-y-4">
-                  <input
-                    type="password"
-                    value={pinInput}
-                    onChange={e => setPinInput(e.target.value)}
-                    placeholder="הקלד קוד גישה (PIN)..."
-                    className="w-full bg-[#131A22] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-sm text-white outline-none text-center font-mono"
-                    autoFocus
-                  />
+                    <form onSubmit={handleTriggerRefresh} className="space-y-4">
+                      <input
+                        type="password"
+                        value={pinInput}
+                        onChange={e => setPinInput(e.target.value)}
+                        placeholder="הקלד קוד גישה (PIN)..."
+                        className="w-full bg-[#131A22] border border-[#2D3A4B] focus:border-[#B2FF05] rounded-xl px-4 py-2.5 text-sm text-white outline-none text-center font-mono"
+                        autoFocus
+                      />
 
-                  {triggerStatus.msg && (
-                    <div className={`p-3 rounded-xl text-xs leading-relaxed border ${
-                      triggerStatus.state === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-[#B2FF05]/10 border-[#B2FF05]/30 text-[#B2FF05]'
+                      {triggerStatus.state === 'error' && triggerStatus.msg && (
+                        <div className="p-3 rounded-xl text-xs leading-relaxed border bg-red-500/10 border-red-500/30 text-red-300">
+                          {triggerStatus.msg}
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setShowPinModal(false)} className="px-4 py-2 rounded-xl text-xs text-gray-400 bg-[#161E27]">סגור</button>
+                        <button type="submit" disabled={!pinInput.trim()} className="bg-[#B2FF05] disabled:opacity-40 text-[#0B0F14] px-5 py-2 rounded-xl text-xs font-black">הפעל סריקה</button>
+                      </div>
+                    </form>
+                  </>
+                )}
+
+                {/* מצב 2: סריקה פעילה (שדה הקוד וכפתור ההפעלה מוסתרים לגמרי) */}
+                {(triggerStatus.state === 'loading' || triggerStatus.state === 'running') && (
+                  <div className="space-y-5 py-2">
+                    <div className="flex flex-col items-center text-center space-y-3 bg-[#131A22] border border-[#B2FF05]/30 rounded-xl p-5">
+                      <div className="w-9 h-9 border-4 border-[#B2FF05] border-t-transparent rounded-full animate-spin"></div>
+                      <div className="text-sm font-bold text-white">{triggerStatus.msg}</div>
+                      {triggerStatus.state === 'running' && (
+                        <div className="text-xs font-mono text-[#B2FF05] bg-[#0B0F14] px-3 py-1 rounded-lg border border-[#232D36]">
+                          זמן ריצה: {formatTimer(elapsedSeconds)} (בדרך כלל 1:30–2:30 דקות)
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelOrResetModal}
+                        className="px-3.5 py-2 rounded-xl text-xs text-red-300 hover:bg-red-500/15 border border-red-500/30 transition-colors"
+                      >
+                        בטל מעקב
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPinModal(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-gray-200 bg-[#1A232E] hover:bg-[#232F3E] border border-[#2D3A4B] transition-colors"
+                      >
+                        המשך ברקע (מזער חלון)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* מצב 3: סיום הצלחה או פסק זמן */}
+                {(triggerStatus.state === 'done' || triggerStatus.state === 'timeout') && (
+                  <div className="space-y-4 py-2">
+                    <div className={`p-4 rounded-xl text-xs leading-relaxed border text-center font-bold ${
+                      triggerStatus.state === 'done'
+                        ? 'bg-[#B2FF05]/15 border-[#B2FF05]/40 text-[#B2FF05]'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                     }`}>
                       {triggerStatus.msg}
                     </div>
-                  )}
 
-                  <div className="flex justify-end gap-2">
-                    <button type="button" onClick={() => setShowPinModal(false)} className="px-4 py-2 rounded-xl text-xs text-gray-400 bg-[#161E27]">סגור</button>
-                    <button type="submit" disabled={triggerStatus.state === 'loading' || triggerStatus.state === 'running'} className="bg-[#B2FF05] text-[#0B0F14] px-5 py-2 rounded-xl text-xs font-bold font-black">הפעל סריקה</button>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleCancelOrResetModal}
+                        className="bg-[#B2FF05] text-[#0B0F14] px-5 py-2 rounded-xl text-xs font-black"
+                      >
+                        סגור והצג נתונים
+                      </button>
+                    </div>
                   </div>
-                </form>
+                )}
               </div>
             </div>
           )}
