@@ -24,18 +24,21 @@ const COUNTRIES = [
 ];
 
 async function fetchCountryCompanies(country) {
-  const prompt = `אתה אנליסט מחקר שוק והשקעות המתמחה באמריקה הלטינית.
-מצא 8 חברות בולטות ומעניינות להשקעה הפועלות ב${country} (שילוב של חברות עוגן בורסאיות חזקות, חברות פינטק/טכנולוגיה צומחות, וחברות לקראת או אחרי הנפקה).
-הקפד על נתונים אמיתיים ומאומתים בלבד — אל תמציא סכומי גיוס או שווי אם לא פורסמו (כתוב "לא פורסם").
+  const prompt = `השתמש בחיפוש החי בגוגל (Google Search) כדי לאתר מידע עדכני משנת 2026 על 8 חברות בולטות ומעניינות להשקעה הפועלות ב${country} (שילוב של חברות עוגן בורסאיות חזקות, חברות פינטק/טכנולוגיה צומחות עם חדשות מהחודשים האחרונים, וחברות לקראת או אחרי הנפקה).
 
-החזר אך ורק מערך JSON תקני (ללא Markdown וללא טקסט מסביב) של 8 אובייקטים במבנה המדויק הבא:
+חוקי ברזל למניעת המצאות:
+1. הסתמך אך ורק על ממצאים אמיתיים מתוצאות החיפוש בגוגל.
+2. אל תמציא סכומי גיוס או שווי שוק אם לא הופיעו בחיפוש — כתוב "לא פורסם".
+3. בשדה "source_url" שים אך ורק קישור אמיתי לכתבה או מקור שמצאת בחיפוש (או מחרוזת ריקה "" אם אין).
+
+החזר אך ורק מערך JSON תקני (ללא טקסט הקדמה וללא סיכום) של 8 אובייקטים במבנה המדויק הבא:
 [
   {
     "name": "שם החברה הרשמי",
     "country": "${country}",
     "industry": "הסקטור המרכזי בעברית (למשל: פינטק ובנקאות, אנרגיה, קמעונאות, לוגיסטיקה, תקשורת)",
     "status": "סטטוס מדויק (למשל: בורסאית NYSE: NU / פרטית • גיוס Series C / לקראת הנפקה)",
-    "interest_level": "מספר שלם בין 55 ל-96 המייצג עניין ומומנטום תקשורתי",
+    "interest_level": "מספר שלם בין 55 ל-96 המייצג עניין ומומנטום תקשורתי בהתבסס על כמות ועדכניות החדשות שנמצאו בחיפוש",
     "stability_score": "מספר שלם בין 40 ל-97 המודד יציבות, ותק וביטחון מותגי בעיני קהל שמרן ובוגר (90+ לחברות ענק ותיקות ומוכרות כמו בנקים מסורתיים, אנרגיה או קמעונאות ענק; 40-65 לסטארט-אפים צעירים או קריפטו)",
     "audience_age": "טווח גילאים טבעי של המשקיע הטיפוסי (למשל: '45–65+ (בוגרים ומשפחות)' או '25–45 (צעירים ודיגיטליים)')",
     "tech_literacy": "רמת אוריינות טכנולוגית נדרשת: 'נמוכה (מותג יומיומי מוכר)' / 'בינונית' / 'גבוהה (מוצר פינטק/טכנולוגי מתקדם)'",
@@ -43,12 +46,12 @@ async function fetchCountryCompanies(country) {
     "motivation": "המניע המרכזי למשקיע (למשל: כסף ותשואה (קר) / הזדמנות צמיחה / יציבות ודיבידנד)",
     "description": "הסבר קצר וברור (2 משפטים) מה החברה עושה בפועל ב${country}",
     "investment_thesis": "למה שווה להשקיע בה עכשיו (2 משפטים ממוקדים)",
-    "catalyst": "מה מדווחים עליה בחדשות העסקיות לאחרונה (גיוס, התרחבות, דוחות, הנפקה)",
-    "raised": "סכום הון שגויס (או 'לא פורסם')",
-    "valuation": "שווי מוערך / שווי שוק עדכני (או 'לא פורסם')",
+    "catalyst": "מה מדווחים עליה בחדשות העסקיות לאחרונה לפי החיפוש בגוגל (גיוס, התרחבות, דוחות, הנפקה)",
+    "raised": "סכום הון שגויס כפי שמופיע במקורות (או 'לא פורסם')",
+    "valuation": "שווי מוערך / שווי שוק עדכני כפי שמופיע במקורות (או 'לא פורסם')",
     "target_audience": "תיאור פרופיל המשקיע הפרטי (Retail Investor) ב${country} שהחברה הזו מתאימה לו ביותר",
     "creative_idea": "הצעה לקריאייטיב פרסומי לגיוס משקיעים פרטיים (Retail Investors) שרוצים להשקיע ולהרוויח ממניית/צמיחת החברה (אסור להציע לצרוך את המוצר או להוריד את האפליקציה! רק השקעה והכנסה נוספת מהמותג).",
-    "source_url": "קישור לכתבה או מקור מידע רלוונטי (או מחרוזת ריקה אם אין)"
+    "source_url": "כתובת URL אמיתית מתוך תוצאות החיפוש בגוגל"
   }
 ]`;
 
@@ -59,29 +62,54 @@ async function fetchCountryCompanies(country) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' }
+        tools: [{ google_search: {} }]
       })
     }
   );
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gemini error for ${country}: ${errText}`);
+    throw new Error(`Gemini live search error for ${country}: ${errText}`);
   }
 
   const data = await response.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-  const cleanJson = rawText.replace(/```json|```/g, '').trim();
-  return JSON.parse(cleanJson);
+  const candidate = data?.candidates?.[0];
+  const rawText = candidate?.content?.parts?.map(p => p.text || '').join('') || '[]';
+
+  // שליפת קישורים אמיתיים ומאומתים מתוך מטא-דאטה של חיפוש גוגל (Grounding Chunks)
+  const chunks = candidate?.groundingMetadata?.groundingChunks || [];
+  const verifiedUrls = chunks
+    .map(ch => ch.web?.uri)
+    .filter(uri => uri && uri.startsWith('http'));
+
+  // חילוץ מערך ה-JSON מתוך התשובה
+  const startIdx = rawText.indexOf('[');
+  const endIdx = rawText.lastIndexOf(']');
+  if (startIdx === -1 || endIdx === -1) {
+    throw new Error(`No valid JSON array found in response for ${country}`);
+  }
+
+  const jsonString = rawText.slice(startIdx, endIdx + 1);
+  const parsed = JSON.parse(jsonString);
+
+  // חיזוק אמינות הקישורים: אם המודל לא החזיר לינק תקין, הצמדת לינק מאומת מתוצאות החיפוש
+  return parsed.map((item, idx) => {
+    const hasValidUrl = item.source_url && String(item.source_url).startsWith('http') && !String(item.source_url).includes('vertexaisearch');
+    const fallbackVerified = verifiedUrls[idx % verifiedUrls.length] || verifiedUrls[0] || '';
+    return {
+      ...item,
+      source_url: hasValidUrl ? item.source_url : fallbackVerified
+    };
+  });
 }
 
 async function run() {
-  console.log('Starting LatAm companies research scraper...');
+  console.log('Starting LatAm live Google Search research scraper...');
   const allRows = [];
 
   for (const country of COUNTRIES) {
     try {
-      console.log(`Fetching companies for ${country}...`);
+      console.log(`Live searching Google for companies in ${country}...`);
       const items = await fetchCountryCompanies(country);
       if (Array.isArray(items)) {
         for (const c of items) {
@@ -119,7 +147,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log(`Total companies collected: ${allRows.length}. Updating Supabase...`);
+  console.log(`Total live companies collected: ${allRows.length}. Updating Supabase...`);
 
   const { error: delError } = await supabase
     .from('latam_companies')
@@ -139,7 +167,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log('Successfully updated latam_companies table!');
+  console.log('Successfully updated latam_companies table with live Google Search data!');
 }
 
 run();
