@@ -76,13 +76,11 @@ async function fetchCountryCompanies(country) {
   const candidate = data?.candidates?.[0];
   const rawText = candidate?.content?.parts?.map(p => p.text || '').join('') || '[]';
 
-  // שליפת קישורים אמיתיים ומאומתים מתוך מטא-דאטה של חיפוש גוגל (Grounding Chunks)
   const chunks = candidate?.groundingMetadata?.groundingChunks || [];
   const verifiedUrls = chunks
     .map(ch => ch.web?.uri)
     .filter(uri => uri && uri.startsWith('http'));
 
-  // חילוץ מערך ה-JSON מתוך התשובה
   const startIdx = rawText.indexOf('[');
   const endIdx = rawText.lastIndexOf(']');
   if (startIdx === -1 || endIdx === -1) {
@@ -92,7 +90,6 @@ async function fetchCountryCompanies(country) {
   const jsonString = rawText.slice(startIdx, endIdx + 1);
   const parsed = JSON.parse(jsonString);
 
-  // חיזוק אמינות הקישורים: אם המודל לא החזיר לינק תקין, הצמדת לינק מאומת מתוצאות החיפוש
   return parsed.map((item, idx) => {
     const hasValidUrl = item.source_url && String(item.source_url).startsWith('http') && !String(item.source_url).includes('vertexaisearch');
     const fallbackVerified = verifiedUrls[idx % verifiedUrls.length] || verifiedUrls[0] || '';
@@ -132,8 +129,7 @@ async function run() {
             valuation: c.valuation || 'לא פורסם',
             target_audience: c.target_audience || '',
             creative_idea: c.creative_idea || '',
-            source_url: c.source_url || '',
-            updated_at: new Date().toISOString()
+            source_url: c.source_url || ''
           });
         }
       }
